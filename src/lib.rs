@@ -1,6 +1,9 @@
 mod leaf;
 pub mod merkle_tree;
 
+pub use leaf::*;
+pub use merkle_tree::*;
+
 #[cfg(any(
     target_pointer_width = "32",
     target_pointer_width = "16",
