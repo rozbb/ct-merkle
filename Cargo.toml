@@ -1,0 +1,15 @@
+[package]
+name = "ct-merkle"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+digest = "0.10"
+serde = { version = "1", features = [ "derive" ] }
+thiserror = "1.0.31"
+
+[dev-dependencies]
+rand = { version = "0.8", features = [ "std_rng" ] }
+sha2 = "0.10"
