@@ -192,11 +192,17 @@ where
     /// Returns the root hash of this tree. The value and type uniquely describe this tree.
     pub fn root(&self) -> RootHash<H> {
         let num_leaves = self.leaves.len() as u64;
-        let root_idx = root_idx(num_leaves as u64);
-        let hash = &self.internal_nodes[root_idx.usize()];
+        // Root of an empty tree is H("")
+        let root_hash = if num_leaves == 0 {
+            H::digest(b"")
+        } else {
+            //  Otherwise it's the internal node at the root index
+            let root_idx = root_idx(num_leaves as u64);
+            self.internal_nodes[root_idx.usize()].clone()
+        };
 
         RootHash {
-            root_hash: hash.clone(),
+            root_hash,
             num_leaves,
         }
     }
@@ -245,12 +251,11 @@ pub(crate) mod test {
         val
     }
 
-    // Creates a random CtMerkleTree
-    pub(crate) fn rand_tree<R: RngCore>(mut rng: R) -> CtMerkleTree<H, T> {
+    // Creates a random CtMerkleTree with `size` items
+    pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> CtMerkleTree<H, T> {
         let mut v = CtMerkleTree::<H, T>::default();
 
-        // Add a bunch of items. This tree will not be a full tree.
-        for i in 0..230 {
+        for i in 0..size {
             let val = rand_val(&mut rng);
             v.push(val)
                 .expect(&format!("push failed at iteration {}", i));
@@ -259,11 +264,14 @@ pub(crate) mod test {
         v
     }
 
+    // A nice not-round number. This will prodce a tree with multiple levels
+    const NUM_ITEMS: usize = 230;
+
     // Adds a bunch of elements to the tree and then tests the tree's consistency
     #[test]
     fn consistency() {
         let mut rng = thread_rng();
-        let v = rand_tree(&mut rng);
+        let v = rand_tree(&mut rng, NUM_ITEMS);
         v.self_check().expect("self check failed");
     }
 
@@ -272,7 +280,7 @@ pub(crate) mod test {
     fn membership_proof_correctness() {
         let mut rng = thread_rng();
 
-        let v = rand_tree(&mut rng);
+        let v = rand_tree(&mut rng, NUM_ITEMS);
 
         // Check membership at every index
         for idx in 0..v.len() {

@@ -179,7 +179,7 @@ pub(crate) mod test {
     fn membership_proof_correctness() {
         let mut rng = thread_rng();
 
-        let v = rand_tree(&mut rng);
+        let v = rand_tree(&mut rng, 100);
 
         // Check membership at every index
         for idx in 0..v.len() {
