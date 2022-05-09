@@ -1,5 +1,7 @@
 mod leaf;
+pub mod membership_proof;
 pub mod merkle_tree;
+mod tree_math;
 
 pub use leaf::*;
 pub use merkle_tree::*;
