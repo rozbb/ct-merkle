@@ -237,14 +237,21 @@ pub(crate) mod test {
     // The hash is SHA-256
     pub(crate) type H = Sha256;
 
+    // Creates a random T
+    pub(crate) fn rand_val<R: RngCore>(mut rng: R) -> T {
+        let mut val = T::default();
+        rng.fill_bytes(&mut val);
+
+        val
+    }
+
     // Creates a random CtMerkleTree
     pub(crate) fn rand_tree<R: RngCore>(mut rng: R) -> CtMerkleTree<H, T> {
         let mut v = CtMerkleTree::<H, T>::default();
 
         // Add a bunch of items. This tree will not be a full tree.
         for i in 0..230 {
-            let mut val = T::default();
-            rng.fill_bytes(&mut val);
+            let val = rand_val(&mut rng);
             v.push(val)
                 .expect(&format!("push failed at iteration {}", i));
         }

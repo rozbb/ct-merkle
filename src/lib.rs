@@ -1,3 +1,11 @@
+#[cfg(any(
+    target_pointer_width = "32",
+    target_pointer_width = "16",
+    target_pointer_width = "8"
+))]
+compile_error!("CT Merkle requires that the architecture's pointers be at least 64 bits");
+
+mod consistency_proof;
 mod leaf;
 pub mod membership_proof;
 pub mod merkle_tree;
@@ -5,13 +13,6 @@ mod tree_math;
 
 pub use leaf::*;
 pub use merkle_tree::*;
-
-#[cfg(any(
-    target_pointer_width = "32",
-    target_pointer_width = "16",
-    target_pointer_width = "8"
-))]
-compile_error!("CT Merkle requires that the architecture's pointers be at least 64 bits");
 
 #[cfg(test)]
 mod tests {
