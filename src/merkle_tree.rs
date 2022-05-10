@@ -10,9 +10,8 @@ use digest::Digest;
 use thiserror::Error;
 
 /// An append-only data structure with support for succinct membership proofs and consistency
-/// proofs (proving that one `CtMerkleTree` is a prefix of another `CtMerkleTree). This is
-/// implemented as a Merkle tree with methods and byte representations compatible Certificate
-/// Transparency logs (RFC 6962).
+/// proofs. This is implemented as a Merkle tree with methods and byte representations compatible
+/// Certificate Transparency logs (RFC 6962).
 #[derive(Clone, Debug)]
 pub struct CtMerkleTree<H, T>
 where
@@ -41,11 +40,15 @@ where
     }
 }
 
-/// The root hash of a CT Merkle Tree
+/// The root hash of a [`CtMerkleTree`]
 #[derive(Clone, Debug)]
 pub struct RootHash<H: Digest> {
-    pub(crate) root_hash: digest::Output<H>,
-    pub(crate) num_leaves: u64,
+    /// The root hash of the Merkle tree that this root represents
+    pub root_hash: digest::Output<H>,
+
+    /// The number of leaves in the Merkle tree that this root represents. That is, the number of
+    /// items inserted into the [`CtMerkleTree`] that created with `RootHash`.
+    pub num_leaves: u64,
 }
 
 impl<H: Digest> PartialEq for RootHash<H> {
@@ -56,9 +59,9 @@ impl<H: Digest> PartialEq for RootHash<H> {
 
 impl<H: Digest> Eq for RootHash<H> {}
 
-/// An error returned during `CtMerkleTree::self_check()`
+/// An error returned during [`CtMerkleTree::self_check`]
 #[derive(Debug, Error)]
-pub enum ConsistencyError {
+pub enum SelfCheckError {
     /// An item could not be serialized
     #[error("could not canonically serialize a item")]
     Io(#[from] IoError),
@@ -102,7 +105,7 @@ where
     /// Checks the consistency of this tree. This can take a while if the tree is large. Run this
     /// if you've deserialized this tree and don't trust the source. Other methods will panic or
     /// behave oddly if your are using a malformed tree.
-    pub fn self_check(&self) -> Result<(), ConsistencyError> {
+    pub fn self_check(&self) -> Result<(), SelfCheckError> {
         // Go through every level of the tree, checking hashes
         let num_leaves = self.leaves.len() as u64;
         let num_nodes = num_internal_nodes(num_leaves);
@@ -114,13 +117,13 @@ where
             // Compute the leaf hash and retrieve the stored leaf hash
             let expected_hash = leaf_hash::<H, T>(leaf)?;
             let stored_hash = match self.internal_nodes.get(leaf_hash_idx.usize()) {
-                None => Err(ConsistencyError::MissingNode),
+                None => Err(SelfCheckError::MissingNode),
                 Some(h) => Ok(h),
             }?;
 
             // If the hashes don't match, that's an error
             if stored_hash != &expected_hash {
-                return Err(ConsistencyError::IncorrectHash);
+                return Err(SelfCheckError::IncorrectHash);
             }
         }
 
@@ -137,22 +140,22 @@ where
                 let left_child = self
                     .internal_nodes
                     .get(idx.left_child().usize())
-                    .ok_or(ConsistencyError::MissingNode)?;
+                    .ok_or(SelfCheckError::MissingNode)?;
                 let right_child = self
                     .internal_nodes
                     .get(idx.right_child(num_leaves).usize())
-                    .ok_or(ConsistencyError::MissingNode)?;
+                    .ok_or(SelfCheckError::MissingNode)?;
 
                 // Compute the expected hash and get the stored hash
                 let expected_hash = parent_hash::<H>(left_child, right_child);
                 let stored_hash = self
                     .internal_nodes
                     .get(idx.usize())
-                    .ok_or(ConsistencyError::MissingNode)?;
+                    .ok_or(SelfCheckError::MissingNode)?;
 
                 // If the hashes don't match, that's an error
                 if stored_hash != &expected_hash {
-                    return Err(ConsistencyError::IncorrectHash);
+                    return Err(SelfCheckError::IncorrectHash);
                 }
             }
         }

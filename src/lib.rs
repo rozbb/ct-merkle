@@ -7,11 +7,13 @@ compile_error!("CT Merkle requires that the architecture's pointers be at least 
 
 mod consistency_proof;
 mod leaf;
-pub mod membership_proof;
-pub mod merkle_tree;
+mod membership_proof;
+mod merkle_tree;
 mod tree_math;
 
+pub use consistency_proof::*;
 pub use leaf::*;
+pub use membership_proof::*;
 pub use merkle_tree::*;
 
 #[cfg(test)]

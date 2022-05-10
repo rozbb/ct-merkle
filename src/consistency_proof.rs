@@ -12,22 +12,17 @@ use std::io::Error as IoError;
 use digest::{typenum::Unsigned, Digest};
 use thiserror::Error;
 
-/// An error representing what went wrong during membership verification
+/// An error representing what went wrong during consistency verification
 #[derive(Debug, Error)]
-pub enum VerificationError {
-    /// An error occurred when serializing the item whose memberhsip is being checked
-    #[error("could not canonically serialize a item")]
-    Io(#[from] IoError),
-
-    /// The proof is malformed
-    #[error("proof size is not a multiple of the hash digest size")]
-    MalformedProof,
-
+pub enum ConsistencyVerifError {
     /// The provided root hash does not match the proof's root hash w.r.t the item
     #[error("memberhsip verificaiton failed")]
     Failure,
 }
 
+/// A proof that one [`CtMerkleTree`] is a prefix of another. In other words, tree #2 is the result
+/// of appending some number of items to the end of tree #1. The byte representation of a
+/// [`ConsistencyProof`] is identical to that of `PROOF(m, D[n])` described in RFC 6962 §2.1.2.
 #[derive(Clone, Debug)]
 pub struct ConsistencyProof<H: Digest> {
     proof: Vec<u8>,
@@ -54,9 +49,10 @@ impl<H: Digest> ConsistencyProof<H> {
         self.proof.as_slice()
     }
 
-    /// Constructs a `ConsistencyProof` from the given bytes. Panics when `bytes.len()` is not a
-    /// multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is not a concatenated sequence of
-    /// hash digests.
+    /// Constructs a `ConsistencyProof` from the given bytes.
+    ///
+    /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
+    /// is not a concatenated sequence of hash digests.
     pub fn from_bytes(bytes: &[u8]) -> Self {
         if bytes.len() % H::OutputSize::USIZE != 0 {
             panic!("malformed consistency proof");
@@ -74,18 +70,23 @@ where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Produces a proof that this `CtMerkleTree` is the result of appending to a tree with the
-    /// same `subslice_size` initial elements. Panics if `subslice_size == 0`.
-    pub fn consistency_proof(&self, subslice_size: usize) -> ConsistencyProof<H> {
-        if subslice_size == 0 {
+    /// Produces a proof that this `CtMerkleTree` is the result of appending to a tree containing
+    /// the same first `slice_size` items.
+    ///
+    /// Panics if `slice_size == 0` or `slice_size > self.len()`.
+    pub fn consistency_proof(&self, slice_size: usize) -> ConsistencyProof<H> {
+        if slice_size == 0 {
             panic!("cannot produce a consistency proof starting from an empty tree");
+        }
+        if slice_size > self.len() {
+            panic!("proposed slice is greater than the tree itself");
         }
 
         let num_tree_leaves = self.leaves.len() as u64;
-        let num_oldtree_leaves = subslice_size as u64;
+        let num_oldtree_leaves = slice_size as u64;
         let tree_root_idx = root_idx(num_tree_leaves as u64);
         let oldtree_root_idx = root_idx(num_oldtree_leaves as u64);
-        let starting_idx: InternalIdx = LeafIdx::new(subslice_size as u64 - 1).into();
+        let starting_idx: InternalIdx = LeafIdx::new(slice_size as u64 - 1).into();
 
         // We have starting_idx in a current tree and a old tree. starting_idx occurs in a subtree
         // which is both a subtree of the current tree and of the old tree.
@@ -97,7 +98,7 @@ where
         // when the old tree is a complete binary tree OR when the old tree equals this tree (i.e.,
         // nothing changed between the trees).
         let oldtree_is_subtree =
-            subslice_size.is_power_of_two() || subslice_size == num_tree_leaves as usize;
+            slice_size.is_power_of_two() || slice_size == num_tree_leaves as usize;
 
         // If the old tree is a subtree, then the starting idx for the path is the subtree root
         let mut path_idx = if oldtree_is_subtree {
@@ -130,13 +131,14 @@ where
 }
 
 impl<H: Digest> RootHash<H> {
-    /// Verifies that `val` occurs at index `idx` in the tree described by this `RootHash`. Panics
-    /// if `old_root` represents the empty tree.
+    /// Verifies that the tree described by `old_root` is a prefix of the tree described by `self`.
+    ///
+    /// Panics if `old_root.num_leaves == 0` or `old_root.num_leaves > self.num_leaves`.
     pub fn verify_consistency(
         &self,
         old_root: &RootHash<H>,
         proof: &ConsistencyProofRef<H>,
-    ) -> Result<(), VerificationError> {
+    ) -> Result<(), ConsistencyVerifError> {
         let starting_idx: InternalIdx = LeafIdx::new(old_root.num_leaves - 1).into();
         let num_tree_leaves = self.num_leaves;
         let num_oldtree_leaves = old_root.num_leaves;
@@ -144,6 +146,9 @@ impl<H: Digest> RootHash<H> {
 
         if num_oldtree_leaves == 0 {
             panic!("consistency proofs cannot exist wrt the empty tree");
+        }
+        if num_oldtree_leaves > num_tree_leaves {
+            panic!("consistency proof is from a bigger tree than this one");
         }
 
         // We have a special case when the old tree is a subtree of the current tree. This happens
@@ -197,7 +202,7 @@ impl<H: Digest> RootHash<H> {
 
         // At the end, the old hash should be the old root, and the new hash should be the new root
         if (running_oldtree_hash != old_root.root_hash) || (running_tree_hash != self.root_hash) {
-            Err(VerificationError::Failure)
+            Err(ConsistencyVerifError::Failure)
         } else {
             Ok(())
         }

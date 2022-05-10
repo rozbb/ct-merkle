@@ -14,7 +14,7 @@ use thiserror::Error;
 
 /// An error representing what went wrong during membership verification
 #[derive(Debug, Error)]
-pub enum VerificationError {
+pub enum MembershipVerifError {
     /// An error occurred when serializing the item whose memberhsip is being checked
     #[error("could not canonically serialize a item")]
     Io(#[from] IoError),
@@ -28,8 +28,8 @@ pub enum VerificationError {
     Failure,
 }
 
-/// A proof of membership in some tree. The byte representation of this is identical to that of
-/// `PATH(m, D[n])` described in RFC 6962.
+/// A proof that a value appears in a [`CtMerkleTree`]. The byte representation of a
+/// [`MembershipProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
 pub struct MembershipProof<H: Digest> {
     proof: Vec<u8>,
     _marker: PhantomData<H>,
@@ -126,7 +126,7 @@ impl<H: Digest> RootHash<H> {
         val: &T,
         idx: u64,
         proof: &MembershipProofRef<H>,
-    ) -> Result<(), VerificationError> {
+    ) -> Result<(), MembershipVerifError> {
         // Check that the proof isn't too big, and is made up of a sequence of hash digests
         let MembershipProofRef { proof, .. } = proof;
         let max_proof_size = {
@@ -134,7 +134,7 @@ impl<H: Digest> RootHash<H> {
             (tree_height * H::OutputSize::U32) as usize
         };
         if proof.len() > max_proof_size || proof.len() % H::OutputSize::USIZE != 0 {
-            return Err(VerificationError::MalformedProof);
+            return Err(MembershipVerifError::MalformedProof);
         }
 
         // If the proof is empty, then the leaf hash is the root hash
@@ -163,7 +163,7 @@ impl<H: Digest> RootHash<H> {
         if cur_hash == self.root_hash {
             Ok(())
         } else {
-            Err(VerificationError::Failure)
+            Err(MembershipVerifError::Failure)
         }
     }
 }

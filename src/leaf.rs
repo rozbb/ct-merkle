@@ -4,6 +4,8 @@ use digest::Digest;
 
 const LEAF_HASH_PREFIX: &[u8] = &[0x00];
 
+/// A trait impl'd by types that have a canonical byte representation. This MUST be implemented by
+/// any type you want to insert into a [`CtMerkleTree`](crate::merkle_tree::CtMerkleTree).
 pub trait CanonicalSerialize {
     fn serialize<W: Write>(&self, writer: W) -> Result<(), IoError>;
 }
