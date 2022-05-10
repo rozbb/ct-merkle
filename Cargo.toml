@@ -2,13 +2,15 @@
 name = "ct-merkle"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT/Apache-2.0"
+keywords = ["crypto", "tls", "certficate-transparency", "ct", "hash"]
+categories = ["cryptography", "network-programming", "compression"]
+description = "An implementation of the append-only log described in the Certificate Transparency specification (RFC 6962)"
 
 [dependencies]
 digest = "0.10"
 serde = { version = "1", features = [ "derive" ] }
-thiserror = "1.0.31"
+thiserror = "1"
 
 [dev-dependencies]
 rand = { version = "0.8", features = [ "std_rng" ] }
