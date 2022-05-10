@@ -9,8 +9,10 @@ use std::io::Error as IoError;
 use digest::Digest;
 use thiserror::Error;
 
-/// A merkle tree with methods and byte representations compatible Certificate Transparency logs
-/// (RFC 6962)
+/// An append-only data structure with support for succinct membership proofs and consistency
+/// proofs (proving that one `CtMerkleTree` is a prefix of another `CtMerkleTree). This is
+/// implemented as a Merkle tree with methods and byte representations compatible Certificate
+/// Transparency logs (RFC 6962).
 #[derive(Clone, Debug)]
 pub struct CtMerkleTree<H, T>
 where
@@ -40,11 +42,19 @@ where
 }
 
 /// The root hash of a CT Merkle Tree
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct RootHash<H: Digest> {
     pub(crate) root_hash: digest::Output<H>,
     pub(crate) num_leaves: u64,
 }
+
+impl<H: Digest> PartialEq for RootHash<H> {
+    fn eq(&self, other: &RootHash<H>) -> bool {
+        self.root_hash == other.root_hash
+    }
+}
+
+impl<H: Digest> Eq for RootHash<H> {}
 
 /// An error returned during `CtMerkleTree::self_check()`
 #[derive(Debug, Error)]

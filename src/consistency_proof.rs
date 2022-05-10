@@ -87,52 +87,35 @@ where
         let oldtree_root_idx = root_idx(num_oldtree_leaves as u64);
         let starting_idx: InternalIdx = LeafIdx::new(subslice_size as u64 - 1).into();
 
-        // A consistency proof from self to self is empty
-        if subslice_size == num_tree_leaves as usize {
-            return ConsistencyProof {
-                proof: Vec::new(),
-                _marker: PhantomData,
-            };
-        }
-
         // We have starting_idx in a current tree and a old tree. starting_idx occurs in a subtree
         // which is both a subtree of the current tree and of the old tree.
         // We want to find the largest such subtree, and start logging the copath after that.
 
         let mut proof = Vec::new();
 
-        // We have a special case when the old tree is a subtree
-        let oldtree_is_subtree = subslice_size.is_power_of_two();
+        // We have a special case when the old tree is a subtree of the current tree. This happens
+        // when the old tree is a complete binary tree OR when the old tree equals this tree (i.e.,
+        // nothing changed between the trees).
+        let oldtree_is_subtree =
+            subslice_size.is_power_of_two() || subslice_size == num_tree_leaves as usize;
 
-        // If the old tree isn't a subtree, find the first place that the ancestors of the starting
-        // index diverge
-        let mut path_idx = if !oldtree_is_subtree {
-            let mut ancestor_in_tree = starting_idx;
-            let mut ancestor_in_oldtree = starting_idx;
-
-            // We don't have to worry about this panicking. ancestor_in_oldtree can only ever be
-            // the root idx if oldtree_is_subtree.
-            while ancestor_in_tree.parent(num_tree_leaves)
-                == ancestor_in_oldtree.parent(num_oldtree_leaves)
-            {
-                // Step up the trees
-                ancestor_in_tree = ancestor_in_tree.parent(num_tree_leaves);
-                ancestor_in_oldtree = ancestor_in_oldtree.parent(num_oldtree_leaves);
-            }
-
-            // We found the divergent point. Record the point just before divergences
-            println!("Adding index {} to proof", ancestor_in_tree.usize());
+        // If the old tree is a subtree, then the starting idx for the path is the subtree root
+        let mut path_idx = if oldtree_is_subtree {
+            oldtree_root_idx
+        } else {
+            // If the old tree isn't a subtree, find the first place that the ancestors of the
+            // starting index diverge
+            let ancestor_in_tree =
+                last_common_ancestor(starting_idx, num_tree_leaves, num_oldtree_leaves);
+            // Record the point just before divergences
             proof.extend_from_slice(&self.internal_nodes[ancestor_in_tree.usize()]);
 
             ancestor_in_tree
-        } else {
-            oldtree_root_idx
         };
 
         // Now collect the copath, just like in the membership proof
         while path_idx != tree_root_idx {
             let sibling_idx = path_idx.sibling(num_tree_leaves);
-            println!("Adding index {} to proof", sibling_idx.usize());
             proof.extend_from_slice(&self.internal_nodes[sibling_idx.usize()]);
 
             // Go up a level
@@ -163,13 +146,10 @@ impl<H: Digest> RootHash<H> {
             panic!("consistency proofs cannot exist wrt the empty tree");
         }
 
-        // The update was from self to self. Nothing changed, and the proof is empty. Success.
-        if old_root.root_hash == self.root_hash && proof.proof.len() == 0 {
-            return Ok(());
-        }
-
-        // We have a special case when the old tree is a subtree
-        let oldtree_is_subtree = old_root.num_leaves.is_power_of_two();
+        // We have a special case when the old tree is a subtree of the current tree. This happens
+        // when the old tree is a complete binary tree OR when the old tree equals this tree (i.e.,
+        // nothing changed between the trees).
+        let oldtree_is_subtree = old_root.num_leaves.is_power_of_two() || old_root == self;
 
         let mut digests = proof
             .proof
@@ -181,35 +161,16 @@ impl<H: Digest> RootHash<H> {
         let (mut running_oldtree_idx, mut running_oldtree_hash) = if oldtree_is_subtree {
             (oldtree_root_idx, old_root.root_hash.clone())
         } else {
-            // If the old tree isn't a subtree, find the first place that the ancestors of the
-            // starting index diverge
-            let mut ancestor_in_tree = starting_idx;
-            let mut ancestor_in_oldtree = starting_idx;
-
-            // We don't have to worry about this panicking. ancestor_in_oldtree can only ever be
-            // the root idx if oldtree_is_subtree.
-            while ancestor_in_tree.parent(num_tree_leaves)
-                == ancestor_in_oldtree.parent(num_oldtree_leaves)
-            {
-                // Step up the trees
-                ancestor_in_tree = ancestor_in_tree.parent(num_tree_leaves);
-                ancestor_in_oldtree = ancestor_in_oldtree.parent(num_oldtree_leaves);
-            }
-
-            // We found the divergent point. Record the point just before divergences
-            (ancestor_in_tree, digests.next().unwrap().clone())
+            let first_hash = digests.next().unwrap().clone();
+            let ancestor_in_tree =
+                last_common_ancestor(starting_idx, num_tree_leaves, num_oldtree_leaves);
+            (ancestor_in_tree, first_hash)
         };
         let mut running_tree_hash = running_oldtree_hash.clone();
         let mut running_tree_idx = running_oldtree_idx;
 
         for sibling_hash in digests {
             let sibling_idx = running_tree_idx.sibling(num_tree_leaves);
-
-            println!(
-                "Tree: {} <-> {}",
-                running_tree_idx.usize(),
-                sibling_idx.usize()
-            );
 
             if running_tree_idx.is_left(num_tree_leaves) {
                 running_tree_hash = parent_hash::<H>(&running_tree_hash, sibling_hash);
@@ -224,12 +185,6 @@ impl<H: Digest> RootHash<H> {
             if running_oldtree_idx != oldtree_root_idx
                 && sibling_idx == running_oldtree_idx.sibling(num_oldtree_leaves)
             {
-                println!(
-                    "Oldtree: {} <-> {}",
-                    running_tree_idx.usize(),
-                    sibling_idx.usize()
-                );
-                println!("Updating old tree hash");
                 if running_oldtree_idx.is_left(num_oldtree_leaves) {
                     running_oldtree_hash = parent_hash::<H>(&running_oldtree_hash, sibling_hash);
                 } else {
@@ -242,16 +197,21 @@ impl<H: Digest> RootHash<H> {
 
         // At the end, the old hash should be the old root, and the new hash should be the new root
         if (running_oldtree_hash != old_root.root_hash) || (running_tree_hash != self.root_hash) {
-            eprintln!(
-                "oldtree match: {}",
-                running_oldtree_hash == old_root.root_hash
-            );
-            eprintln!("tree match: {}", running_tree_hash == self.root_hash);
             Err(VerificationError::Failure)
         } else {
             Ok(())
         }
     }
+}
+
+/// Given an index `idx` that appears in two trees (num_leaves1 and num_leaves2), find the first
+/// ancestor of `idx` whose parent in tree1 is not the same as the parent in tree2.
+fn last_common_ancestor(mut idx: InternalIdx, num_leaves1: u64, num_leaves2: u64) -> InternalIdx {
+    while idx.parent(num_leaves1) == idx.parent(num_leaves2) {
+        idx = idx.parent(num_leaves1);
+    }
+
+    idx
 }
 
 #[cfg(test)]
@@ -267,14 +227,7 @@ pub(crate) mod test {
 
         for initial_size in 1..50 {
             for num_to_add in 0..50 {
-                print!(
-                    "Consistency check failed for {} -> {} leaves",
-                    initial_size,
-                    initial_size + num_to_add
-                );
-
                 let mut v = rand_tree(&mut rng, initial_size);
-                let initial_size = v.len();
                 let initial_root = v.root();
 
                 // Now add to v
@@ -286,7 +239,6 @@ pub(crate) mod test {
 
                 // Now make a consistency proof and check it
                 let proof = v.consistency_proof(initial_size);
-                println!("proof is {} long", proof.proof.len() / 32);
                 new_root
                     .verify_consistency(&initial_root, &proof.as_ref())
                     .expect(&format!(
