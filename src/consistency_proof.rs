@@ -7,7 +7,6 @@ use crate::{
 };
 
 use core::marker::PhantomData;
-use std::io::Error as IoError;
 
 use digest::{typenum::Unsigned, Digest};
 use thiserror::Error;
