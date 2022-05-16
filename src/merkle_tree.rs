@@ -84,7 +84,7 @@ where
         Self::default()
     }
 
-    /// Attemtps to push the given item to the list. Errors only when item serialization fails.
+    /// Attempts to push the given item to the list. Errors only when item serialization fails.
     pub fn push(&mut self, new_val: T) -> Result<(), IoError> {
         // We push the new value, a node for its hash, and a node for its parent (assuming the tree
         // isn't a singleton). The hash and parent nodes will get overwritten by recalculate_path()
