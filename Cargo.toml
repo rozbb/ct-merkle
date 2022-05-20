@@ -13,5 +13,6 @@ serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 
 [dev-dependencies]
+hex = "0.4"
 rand = { version = "0.8", features = [ "std_rng" ] }
 sha2 = "0.10"
