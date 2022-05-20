@@ -9,7 +9,7 @@ use std::io::Error as IoError;
 use digest::Digest;
 use thiserror::Error;
 
-/// An append-only data structure with support for succinct membership proofs and consistency
+/// An append-only data structure with support for succinct inclusion proofs and consistency
 /// proofs. This is implemented as a Merkle tree with methods and byte representations compatible
 /// Certificate Transparency logs (RFC 6962).
 #[derive(Clone, Debug)]
@@ -288,22 +288,22 @@ pub(crate) mod test {
         v.self_check().expect("self check failed");
     }
 
-    // Tests that an honestly generated membership proof verifies
+    // Tests that an honestly generated inclusion proof verifies
     #[test]
-    fn membership_proof_correctness() {
+    fn inclusion_proof_correctness() {
         let mut rng = thread_rng();
 
         let v = rand_tree(&mut rng, NUM_ITEMS);
 
-        // Check membership at every index
+        // Check inclusion at every index
         for idx in 0..v.len() {
             let idx = idx as u64;
-            let proof = v.membership_proof(idx);
+            let proof = v.inclusion_proof(idx);
             let elem = v.get(idx).unwrap();
 
             // Now check the proof
             let root = v.root();
-            root.verify_membership(&elem, idx, &proof.as_ref()).unwrap();
+            root.verify_inclusion(&elem, idx, &proof.as_ref()).unwrap();
         }
     }
 }

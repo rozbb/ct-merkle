@@ -1,4 +1,4 @@
-//! Types and traits for membership proofs, a.k.a., Merkle Audit Paths
+//! Types and traits for inclusion proofs, a.k.a., Merkle Audit Paths
 
 use crate::{
     leaf::{leaf_hash, CanonicalSerialize},
@@ -12,10 +12,10 @@ use std::io::Error as IoError;
 use digest::{typenum::Unsigned, Digest};
 use thiserror::Error;
 
-/// An error representing what went wrong during membership verification
+/// An error representing what went wrong during inclusion verification
 #[derive(Debug, Error)]
-pub enum MembershipVerifError {
-    /// An error occurred when serializing the item whose memberhsip is being checked
+pub enum InclusionVerifError {
+    /// An error occurred when serializing the item whose inclusion is being checked
     #[error("could not canonically serialize a item")]
     Io(#[from] IoError),
 
@@ -24,50 +24,50 @@ pub enum MembershipVerifError {
     MalformedProof,
 
     /// The provided root hash does not match the proof's root hash w.r.t the item
-    #[error("memberhsip verificaiton failed")]
+    #[error("inclusion verificaiton failed")]
     Failure,
 }
 
 /// A proof that a value appears in a [`CtMerkleTree`]. The byte representation of a
-/// [`MembershipProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
-pub struct MembershipProof<H: Digest> {
+/// [`InclusionProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
+pub struct InclusionProof<H: Digest> {
     proof: Vec<u8>,
     _marker: PhantomData<H>,
 }
 
-/// A reference to a [`MembershipProof`]
-pub struct MembershipProofRef<'a, H: Digest> {
+/// A reference to a [`InclusionProof`]
+pub struct InclusionProofRef<'a, H: Digest> {
     proof: &'a [u8],
     _marker: PhantomData<H>,
 }
 
-impl<H: Digest> AsRef<[u8]> for MembershipProof<H> {
+impl<H: Digest> AsRef<[u8]> for InclusionProof<H> {
     fn as_ref(&self) -> &[u8] {
         self.proof.as_slice()
     }
 }
 
-impl<H: Digest> MembershipProof<H> {
-    pub fn as_ref(&self) -> MembershipProofRef<H> {
-        MembershipProofRef {
+impl<H: Digest> InclusionProof<H> {
+    pub fn as_ref(&self) -> InclusionProofRef<H> {
+        InclusionProofRef {
             proof: self.proof.as_slice(),
             _marker: self._marker,
         }
     }
 
-    /// Returns the RFC 6962-compatible byte representation of this membership proof
+    /// Returns the RFC 6962-compatible byte representation of this inclusion proof
     pub fn as_bytes(&self) -> &[u8] {
         self.proof.as_slice()
     }
 
-    /// Constructs a `MembershipProof` from the given bytes. Panics when `bytes.len()` is not a
+    /// Constructs a `InclusionProof` from the given bytes. Panics when `bytes.len()` is not a
     /// multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is not a concatenated sequence of
     /// hash digests.
     pub fn from_bytes(bytes: &[u8]) -> Self {
         if bytes.len() % H::OutputSize::USIZE != 0 {
-            panic!("malformed membership proof");
+            panic!("malformed inclusion proof");
         } else {
-            MembershipProof {
+            InclusionProof {
                 proof: bytes.to_vec(),
                 _marker: PhantomData,
             }
@@ -80,15 +80,15 @@ where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Returns a proof of membership of the item at the given index. Panics if `idx` exceeds
+    /// Returns a proof of inclusion of the item at the given index. Panics if `idx` exceeds
     /// `Self::len()`.
-    pub fn membership_proof(&self, idx: u64) -> MembershipProof<H> {
+    pub fn inclusion_proof(&self, idx: u64) -> InclusionProof<H> {
         let num_leaves = self.leaves.len() as u64;
         let root_idx = root_idx(num_leaves as u64);
 
         // If this is the singleton tree, the proof is empty
         if self.leaves.len() == 1 {
-            return MembershipProof {
+            return InclusionProof {
                 proof: Vec::new(),
                 _marker: PhantomData,
             };
@@ -112,7 +112,7 @@ where
             parent_idx = parent_idx.parent(num_leaves);
         }
 
-        MembershipProof {
+        InclusionProof {
             proof: sibling_hashes,
             _marker: PhantomData,
         }
@@ -121,20 +121,20 @@ where
 
 impl<H: Digest> RootHash<H> {
     /// Verifies that `val` occurs at index `idx` in the tree described by this `RootHash`.
-    pub fn verify_membership<T: CanonicalSerialize>(
+    pub fn verify_inclusion<T: CanonicalSerialize>(
         &self,
         val: &T,
         idx: u64,
-        proof: &MembershipProofRef<H>,
-    ) -> Result<(), MembershipVerifError> {
+        proof: &InclusionProofRef<H>,
+    ) -> Result<(), InclusionVerifError> {
         // Check that the proof isn't too big, and is made up of a sequence of hash digests
-        let MembershipProofRef { proof, .. } = proof;
+        let InclusionProofRef { proof, .. } = proof;
         let max_proof_size = {
             let tree_height = root_idx(self.num_leaves).level();
             (tree_height * H::OutputSize::U32) as usize
         };
         if proof.len() > max_proof_size || proof.len() % H::OutputSize::USIZE != 0 {
-            return Err(MembershipVerifError::MalformedProof);
+            return Err(InclusionVerifError::MalformedProof);
         }
 
         // If the proof is empty, then the leaf hash is the root hash
@@ -163,7 +163,7 @@ impl<H: Digest> RootHash<H> {
         if cur_hash == self.root_hash {
             Ok(())
         } else {
-            Err(MembershipVerifError::Failure)
+            Err(InclusionVerifError::Failure)
         }
     }
 }
@@ -174,22 +174,22 @@ pub(crate) mod test {
 
     use rand::thread_rng;
 
-    // Tests that an honestly generated membership proof verifies
+    // Tests that an honestly generated inclusion proof verifies
     #[test]
-    fn membership_proof_correctness() {
+    fn inclusion_proof_correctness() {
         let mut rng = thread_rng();
 
         let v = rand_tree(&mut rng, 100);
 
-        // Check membership at every index
+        // Check inclusion at every index
         for idx in 0..v.len() {
             let idx = idx as u64;
-            let proof = v.membership_proof(idx);
+            let proof = v.inclusion_proof(idx);
             let elem = v.get(idx).unwrap();
 
             // Now check the proof
             let root = v.root();
-            root.verify_membership(&elem, idx, &proof.as_ref()).unwrap();
+            root.verify_inclusion(&elem, idx, &proof.as_ref()).unwrap();
         }
     }
 }

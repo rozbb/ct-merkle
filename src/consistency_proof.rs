@@ -15,7 +15,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum ConsistencyVerifError {
     /// The provided root hash does not match the proof's root hash w.r.t the item
-    #[error("memberhsip verificaiton failed")]
+    #[error("consistency verificaiton failed")]
     Failure,
 }
 
@@ -43,7 +43,7 @@ impl<H: Digest> ConsistencyProof<H> {
         }
     }
 
-    /// Returns the RFC 6962-compatible byte representation of this membership proof
+    /// Returns the RFC 6962-compatible byte representation of this conssitency proof
     pub fn as_bytes(&self) -> &[u8] {
         self.proof.as_slice()
     }
@@ -113,7 +113,7 @@ where
             ancestor_in_tree
         };
 
-        // Now collect the copath, just like in the membership proof
+        // Now collect the copath, just like in the inclusion proof
         while path_idx != tree_root_idx {
             let sibling_idx = path_idx.sibling(num_tree_leaves);
             proof.extend_from_slice(&self.internal_nodes[sibling_idx.usize()]);
@@ -224,7 +224,7 @@ pub(crate) mod test {
 
     use rand::thread_rng;
 
-    // Tests that an honestly generated membership proof verifies
+    // Tests that an honestly generated consistency proof verifies
     #[test]
     fn consistency_proof_correctness() {
         let mut rng = thread_rng();

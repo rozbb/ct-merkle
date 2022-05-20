@@ -125,7 +125,7 @@ fn inclusion_kat() {
     {
         // Construct an inclusion proof for the given tree and index
         let t = tree_with_size(*num_leaves);
-        let proof = t.membership_proof(*idx);
+        let proof = t.inclusion_proof(*idx);
 
         // Check that the proof is what we expected
         assert_eq!(proof.as_bytes(), hex::decode(expected_proof).unwrap());
