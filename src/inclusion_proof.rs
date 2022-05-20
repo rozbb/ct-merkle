@@ -172,23 +172,21 @@ impl<H: Digest> RootHash<H> {
 pub(crate) mod test {
     use crate::merkle_tree::test::rand_tree;
 
-    use rand::thread_rng;
-
     // Tests that an honestly generated inclusion proof verifies
     #[test]
     fn inclusion_proof_correctness() {
-        let mut rng = thread_rng();
+        let mut rng = rand::thread_rng();
 
-        let v = rand_tree(&mut rng, 100);
+        let t = rand_tree(&mut rng, 100);
 
         // Check inclusion at every index
-        for idx in 0..v.len() {
+        for idx in 0..t.len() {
             let idx = idx as u64;
-            let proof = v.inclusion_proof(idx);
-            let elem = v.get(idx).unwrap();
+            let proof = t.inclusion_proof(idx);
+            let elem = t.get(idx).unwrap();
 
             // Now check the proof
-            let root = v.root();
+            let root = t.root();
             root.verify_inclusion(&elem, idx, &proof.as_ref()).unwrap();
         }
     }

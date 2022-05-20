@@ -9,6 +9,9 @@ use std::io::Error as IoError;
 use digest::Digest;
 use thiserror::Error;
 
+/// The domain separator used for calculating parent hashes
+const PARENT_HASH_PREFIX: &[u8] = &[0x01];
+
 /// An append-only data structure with support for succinct inclusion proofs and consistency
 /// proofs. This is implemented as a Merkle tree with methods and byte representations compatible
 /// Certificate Transparency logs (RFC 6962).
@@ -102,9 +105,9 @@ where
         self.recaluclate_path(new_leaf_idx)
     }
 
-    /// Checks the consistency of this tree. This can take a while if the tree is large. Run this
-    /// if you've deserialized this tree and don't trust the source. Other methods will panic or
-    /// behave oddly if your are using a malformed tree.
+    /// Checks that this tree is well-formed. This can take a while if the tree is large. Run this
+    /// if you've deserialized this tree and don't trust the source. If a tree is malformed, other
+    /// methods will panic or behave oddly.
     pub fn self_check(&self) -> Result<(), SelfCheckError> {
         // Go through every level of the tree, checking hashes
         let num_leaves = self.leaves.len() as u64;
@@ -205,6 +208,7 @@ where
     /// Returns the root hash of this tree. The value and type uniquely describe this tree.
     pub fn root(&self) -> RootHash<H> {
         let num_leaves = self.leaves.len() as u64;
+
         // Root of an empty tree is H("")
         let root_hash = if num_leaves == 0 {
             H::digest(b"")
@@ -231,9 +235,7 @@ where
     }
 }
 
-const PARENT_HASH_PREFIX: &[u8] = &[0x01];
-
-/// Computes the parent of the two given subtrees
+/// Computes the parent of the two given subtrees. This is `H(0x01 || left || right)`.
 pub(crate) fn parent_hash<H: Digest>(
     left: &digest::Output<H>,
     right: &digest::Output<H>,
@@ -248,12 +250,12 @@ pub(crate) fn parent_hash<H: Digest>(
 pub(crate) mod test {
     use super::*;
 
-    use rand::{thread_rng, RngCore};
+    use rand::RngCore;
     use sha2::Sha256;
 
     // Leaves are 32-byte bytestrings
     pub(crate) type T = [u8; 32];
-    // The hash is SHA-256
+    // The hash function is SHA-256
     pub(crate) type H = Sha256;
 
     // Creates a random T
@@ -266,44 +268,25 @@ pub(crate) mod test {
 
     // Creates a random CtMerkleTree with `size` items
     pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> CtMerkleTree<H, T> {
-        let mut v = CtMerkleTree::<H, T>::default();
+        let mut t = CtMerkleTree::<H, T>::default();
 
         for i in 0..size {
             let val = rand_val(&mut rng);
-            v.push(val)
+            t.push(val)
                 .expect(&format!("push failed at iteration {}", i));
         }
 
-        v
+        t
     }
 
     // A nice not-round number. This will prodce a tree with multiple levels
     const NUM_ITEMS: usize = 230;
 
-    // Adds a bunch of elements to the tree and then tests the tree's consistency
+    // Adds a bunch of elements to the tree and then tests the tree's well-formedness
     #[test]
-    fn consistency() {
-        let mut rng = thread_rng();
-        let v = rand_tree(&mut rng, NUM_ITEMS);
-        v.self_check().expect("self check failed");
-    }
-
-    // Tests that an honestly generated inclusion proof verifies
-    #[test]
-    fn inclusion_proof_correctness() {
-        let mut rng = thread_rng();
-
-        let v = rand_tree(&mut rng, NUM_ITEMS);
-
-        // Check inclusion at every index
-        for idx in 0..v.len() {
-            let idx = idx as u64;
-            let proof = v.inclusion_proof(idx);
-            let elem = v.get(idx).unwrap();
-
-            // Now check the proof
-            let root = v.root();
-            root.verify_inclusion(&elem, idx, &proof.as_ref()).unwrap();
-        }
+    fn self_check() {
+        let mut rng = rand::thread_rng();
+        let t = rand_tree(&mut rng, NUM_ITEMS);
+        t.self_check().expect("self check failed");
     }
 }

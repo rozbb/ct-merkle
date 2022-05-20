@@ -222,27 +222,25 @@ fn last_common_ancestor(mut idx: InternalIdx, num_leaves1: u64, num_leaves2: u64
 pub(crate) mod test {
     use crate::merkle_tree::test::{rand_tree, rand_val};
 
-    use rand::thread_rng;
-
     // Tests that an honestly generated consistency proof verifies
     #[test]
     fn consistency_proof_correctness() {
-        let mut rng = thread_rng();
+        let mut rng = rand::thread_rng();
 
-        for initial_size in 1..50 {
-            for num_to_add in 0..50 {
-                let mut v = rand_tree(&mut rng, initial_size);
-                let initial_root = v.root();
+        for initial_size in 1..25 {
+            for num_to_add in 0..25 {
+                let mut t = rand_tree(&mut rng, initial_size);
+                let initial_root = t.root();
 
                 // Now add to v
                 for _ in 0..num_to_add {
                     let val = rand_val(&mut rng);
-                    v.push(val).unwrap();
+                    t.push(val).unwrap();
                 }
-                let new_root = v.root();
+                let new_root = t.root();
 
                 // Now make a consistency proof and check it
-                let proof = v.consistency_proof(initial_size);
+                let proof = t.consistency_proof(initial_size);
                 new_root
                     .verify_consistency(&initial_root, &proof.as_ref())
                     .expect(&format!(
