@@ -4,6 +4,8 @@ pub(crate) struct LeafIdx(usize);
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct InternalIdx(usize);
 
+// I know I could just expose the underlying usize. But making it an opaque type with a
+// constructor and a getter seems safer
 impl LeafIdx {
     pub(crate) fn new(idx: usize) -> Self {
         LeafIdx(idx)
@@ -14,6 +16,8 @@ impl LeafIdx {
     }
 }
 
+// I know I could just expose the underlying usize. But making it an opaque type with a
+// constructor and a getter seems safer
 impl InternalIdx {
     pub(crate) fn new(idx: usize) -> Self {
         InternalIdx(idx)
