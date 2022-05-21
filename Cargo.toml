@@ -9,13 +9,16 @@ description = "An implementation of the append-only log described in the Certifi
 
 [dependencies]
 digest = "0.10"
-serde = { version = "1", features = [ "derive" ] }
+generic-array = "0.14"
+serde = { version = "1", optional = true, features = [ "derive" ] }
 
 [features]
 default = []
-std = [ "digest/std", "serde/std" ]
+std = [ "digest/std" ]
+serde = [ "dep:serde", "generic-array/serde" ]
 
 [dev-dependencies]
 hex = "0.4"
 rand = { version = "0.8", features = [ "std_rng" ] }
+serde_json = "1"
 sha2 = "0.10"

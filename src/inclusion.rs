@@ -12,8 +12,13 @@ use core::marker::PhantomData;
 
 use digest::{typenum::Unsigned, Digest};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+
 /// A proof that a value appears in a [`CtMerkleTree`]. The byte representation of a
 /// [`InclusionProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
+#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
+#[derive(Clone, Debug)]
 pub struct InclusionProof<H: Digest> {
     proof: Vec<u8>,
     _marker: PhantomData<H>,
@@ -66,9 +71,9 @@ where
 {
     /// Returns a proof of inclusion of the item at the given index. Panics if `idx` exceeds
     /// `Self::len()`.
-    pub fn inclusion_proof(&self, idx: u64) -> InclusionProof<H> {
-        let num_leaves = self.leaves.len() as u64;
-        let root_idx = root_idx(num_leaves as u64);
+    pub fn inclusion_proof(&self, idx: usize) -> InclusionProof<H> {
+        let num_leaves = self.leaves.len();
+        let root_idx = root_idx(num_leaves);
 
         // If this is the singleton tree, the proof is empty
         if self.leaves.len() == 1 {
@@ -108,7 +113,7 @@ impl<H: Digest> RootHash<H> {
     pub fn verify_inclusion<T: CanonicalSerialize>(
         &self,
         val: &T,
-        idx: u64,
+        idx: usize,
         proof: &InclusionProofRef<H>,
     ) -> Result<(), InclusionVerifError> {
         // Check that the proof isn't too big, and is made up of a sequence of hash digests
@@ -167,13 +172,23 @@ pub(crate) mod test {
 
         // Check inclusion at every index
         for idx in 0..t.len() {
-            let idx = idx as u64;
             let proof = t.inclusion_proof(idx);
             let elem = t.get(idx).unwrap();
 
             // Now check the proof
             let root = t.root();
             root.verify_inclusion(&elem, idx, &proof.as_ref()).unwrap();
+
+            // If serde is enabled, check that a serialization round trip doesn't affect the proof
+            #[cfg(feature = "serde")]
+            {
+                use crate::merkle_tree::test::H;
+
+                // Do a round trip and check that the byte representations match at the end
+                let s = serde_json::to_string(&proof).unwrap();
+                let deser_proof: super::InclusionProof<H> = serde_json::from_str(&s).unwrap();
+                assert_eq!(proof.as_bytes(), deser_proof.as_bytes());
+            }
         }
     }
 }

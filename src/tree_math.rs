@@ -1,11 +1,11 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct LeafIdx(u64);
+pub(crate) struct LeafIdx(usize);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct InternalIdx(u64);
+pub(crate) struct InternalIdx(usize);
 
 impl LeafIdx {
-    pub(crate) fn new(idx: u64) -> Self {
+    pub(crate) fn new(idx: usize) -> Self {
         LeafIdx(idx)
     }
 
@@ -15,7 +15,7 @@ impl LeafIdx {
 }
 
 impl InternalIdx {
-    pub(crate) fn new(idx: u64) -> Self {
+    pub(crate) fn new(idx: usize) -> Self {
         InternalIdx(idx)
     }
 
@@ -43,7 +43,7 @@ impl InternalIdx {
     }
 
     // Returns whether this node is to the left of its parent
-    pub(crate) fn is_left(&self, num_leaves: u64) -> bool {
+    pub(crate) fn is_left(&self, num_leaves: usize) -> bool {
         let p = self.parent(num_leaves);
         self.0 < p.0
     }
@@ -51,7 +51,7 @@ impl InternalIdx {
     // The rest of the functions are a direct translation of the array-tree math in
     /// https://www.ietf.org/archive/id/draft-ietf-mls-protocol-14.html#array-based-trees
 
-    pub(crate) fn parent(&self, num_leaves: u64) -> InternalIdx {
+    pub(crate) fn parent(&self, num_leaves: usize) -> InternalIdx {
         fn parent_step(idx: InternalIdx) -> InternalIdx {
             let k = idx.level();
             let b = (idx.0 >> (k + 1)) & 0x01;
@@ -77,7 +77,7 @@ impl InternalIdx {
         InternalIdx(self.0 ^ (0x01 << (k - 1)))
     }
 
-    pub(crate) fn right_child(&self, num_leaves: u64) -> InternalIdx {
+    pub(crate) fn right_child(&self, num_leaves: usize) -> InternalIdx {
         let k = self.level();
         assert_ne!(k, 0, "cannot compute the child of a level-0 node");
 
@@ -89,7 +89,7 @@ impl InternalIdx {
         r
     }
 
-    pub(crate) fn sibling(&self, num_leaves: u64) -> InternalIdx {
+    pub(crate) fn sibling(&self, num_leaves: usize) -> InternalIdx {
         let p = self.parent(num_leaves);
         if self.0 < p.0 {
             p.right_child(num_leaves)
@@ -99,7 +99,7 @@ impl InternalIdx {
     }
 }
 
-fn log2(x: u64) -> u64 {
+fn log2(x: usize) -> usize {
     // We set log2(0) == 0
     if x == 0 {
         0
@@ -113,7 +113,7 @@ fn log2(x: u64) -> u64 {
 }
 
 /// The number of internal nodes necessary to represent a tree with `num_leaves` leaves.
-pub(crate) fn num_internal_nodes(num_leaves: u64) -> u64 {
+pub(crate) fn num_internal_nodes(num_leaves: usize) -> usize {
     if num_leaves < 2 {
         0
     } else {
@@ -121,7 +121,7 @@ pub(crate) fn num_internal_nodes(num_leaves: u64) -> u64 {
     }
 }
 
-pub(crate) fn root_idx(num_leaves: u64) -> InternalIdx {
+pub(crate) fn root_idx(num_leaves: usize) -> InternalIdx {
     let w = num_internal_nodes(num_leaves);
     InternalIdx((1 << log2(w)) - 1)
 }

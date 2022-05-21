@@ -12,9 +12,13 @@ use core::marker::PhantomData;
 
 use digest::{typenum::Unsigned, Digest};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+
 /// A proof that one [`CtMerkleTree`] is a prefix of another. In other words, tree #2 is the result
 /// of appending some number of items to the end of tree #1. The byte representation of a
 /// [`ConsistencyProof`] is identical to that of `PROOF(m, D[n])` described in RFC 6962 §2.1.2.
+#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct ConsistencyProof<H: Digest> {
     proof: Vec<u8>,
@@ -74,11 +78,11 @@ where
             panic!("proposed slice is greater than the tree itself");
         }
 
-        let num_tree_leaves = self.leaves.len() as u64;
-        let num_oldtree_leaves = slice_size as u64;
-        let tree_root_idx = root_idx(num_tree_leaves as u64);
-        let oldtree_root_idx = root_idx(num_oldtree_leaves as u64);
-        let starting_idx: InternalIdx = LeafIdx::new(slice_size as u64 - 1).into();
+        let num_tree_leaves = self.leaves.len();
+        let num_oldtree_leaves = slice_size;
+        let tree_root_idx = root_idx(num_tree_leaves);
+        let oldtree_root_idx = root_idx(num_oldtree_leaves);
+        let starting_idx: InternalIdx = LeafIdx::new(slice_size - 1).into();
 
         // We have starting_idx in a current tree and a old tree. starting_idx occurs in a subtree
         // which is both a subtree of the current tree and of the old tree.
@@ -203,7 +207,11 @@ impl<H: Digest> RootHash<H> {
 
 /// Given an index `idx` that appears in two trees (num_leaves1 and num_leaves2), find the first
 /// ancestor of `idx` whose parent in tree1 is not the same as the parent in tree2.
-fn last_common_ancestor(mut idx: InternalIdx, num_leaves1: u64, num_leaves2: u64) -> InternalIdx {
+fn last_common_ancestor(
+    mut idx: InternalIdx,
+    num_leaves1: usize,
+    num_leaves2: usize,
+) -> InternalIdx {
     while idx.parent(num_leaves1) == idx.parent(num_leaves2) {
         idx = idx.parent(num_leaves1);
     }
@@ -243,6 +251,18 @@ pub(crate) mod test {
                         initial_size,
                         initial_size + num_to_add
                     ));
+
+                // If serde is enabled, check that a serialization round trip doesn't affect the
+                // proof
+                #[cfg(feature = "serde")]
+                {
+                    use crate::merkle_tree::test::H;
+
+                    // Do a round trip and check that the byte representations match at the end
+                    let s = serde_json::to_string(&proof).unwrap();
+                    let deser_proof: super::ConsistencyProof<H> = serde_json::from_str(&s).unwrap();
+                    assert_eq!(proof.as_bytes(), deser_proof.as_bytes());
+                }
             }
         }
     }
