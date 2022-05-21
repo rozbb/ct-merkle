@@ -71,7 +71,7 @@ where
 {
     /// Returns a proof of inclusion of the item at the given index. Panics if `idx` exceeds
     /// `Self::len()`.
-    pub fn inclusion_proof(&self, idx: usize) -> InclusionProof<H> {
+    pub fn prove_inclusion(&self, idx: usize) -> InclusionProof<H> {
         let num_leaves = self.leaves.len();
         let root_idx = root_idx(num_leaves);
 
@@ -172,7 +172,7 @@ pub(crate) mod test {
 
         // Check inclusion at every index
         for idx in 0..t.len() {
-            let proof = t.inclusion_proof(idx);
+            let proof = t.prove_inclusion(idx);
             let elem = t.get(idx).unwrap();
 
             // Now check the proof

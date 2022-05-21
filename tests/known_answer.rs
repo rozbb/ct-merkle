@@ -125,7 +125,7 @@ fn inclusion_kat() {
     {
         // Construct an inclusion proof for the given tree and index
         let t = tree_with_size(*num_leaves);
-        let proof = t.inclusion_proof(*idx);
+        let proof = t.prove_inclusion(*idx);
 
         // Check that the proof is what we expected
         assert_eq!(proof.as_bytes(), hex::decode(expected_proof).unwrap());
@@ -142,7 +142,7 @@ fn consistency_kat() {
     {
         // Construct a consistency proof between the smaller and larger tree
         let t = tree_with_size(*num_leaves2);
-        let proof = t.consistency_proof(*num_leaves1);
+        let proof = t.prove_consistency(*num_leaves1);
 
         // Check that the proof is what we expected
         assert_eq!(proof.as_bytes(), hex::decode(expected_proof).unwrap());

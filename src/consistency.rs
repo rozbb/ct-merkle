@@ -70,7 +70,7 @@ where
     /// the same first `slice_size` items.
     ///
     /// Panics if `slice_size == 0` or `slice_size > self.len()`.
-    pub fn consistency_proof(&self, slice_size: usize) -> ConsistencyProof<H> {
+    pub fn prove_consistency(&self, slice_size: usize) -> ConsistencyProof<H> {
         if slice_size == 0 {
             panic!("cannot produce a consistency proof starting from an empty tree");
         }
@@ -243,7 +243,7 @@ pub(crate) mod test {
                 let new_root = t.root();
 
                 // Now make a consistency proof and check it
-                let proof = t.consistency_proof(initial_size);
+                let proof = t.prove_consistency(initial_size);
                 new_root
                     .verify_consistency(&initial_root, &proof.as_ref())
                     .expect(&format!(
