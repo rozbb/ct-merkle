@@ -5,9 +5,9 @@
 ))]
 compile_error!("CT Merkle requires that the architecture's pointers be at least 64 bits");
 
-pub mod consistency_proof;
+pub mod consistency;
 pub mod error;
-pub mod inclusion_proof;
+pub mod inclusion;
 mod leaf;
 mod merkle_tree;
 mod tree_math;
