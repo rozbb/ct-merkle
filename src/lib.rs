@@ -12,5 +12,8 @@ mod leaf;
 mod merkle_tree;
 mod tree_math;
 
+#[cfg(test)]
+mod test_util;
+
 pub use leaf::*;
 pub use merkle_tree::*;

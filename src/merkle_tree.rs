@@ -48,9 +48,13 @@ where
 }
 
 /// The root hash of a [`CtMerkleTree`]
+#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct RootHash<H: Digest> {
     /// The root hash of the Merkle tree that this root represents
+    // The serde bounds are "" here because every digest::Output is Serializable and
+    // Deserializable, with no extra assumptions necessary
+    #[cfg_attr(feature = "serde", serde(bound(deserialize = "", serialize = "")))]
     pub root_hash: digest::Output<H>,
 
     /// The number of leaves in the Merkle tree that this root represents. That is, the number of
@@ -249,26 +253,21 @@ pub(crate) fn parent_hash<H: Digest>(
 #[cfg(test)]
 pub(crate) mod test {
     use super::*;
+    use crate::test_util::{Hash, Leaf};
 
     use rand::RngCore;
-    use sha2::Sha256;
-
-    // Leaves are 32-byte bytestrings
-    pub(crate) type T = [u8; 32];
-    // The hash function is SHA-256
-    pub(crate) type H = Sha256;
 
     // Creates a random T
-    pub(crate) fn rand_val<R: RngCore>(mut rng: R) -> T {
-        let mut val = T::default();
+    pub(crate) fn rand_val<R: RngCore>(mut rng: R) -> Leaf {
+        let mut val = Leaf::default();
         rng.fill_bytes(&mut val);
 
         val
     }
 
     // Creates a random CtMerkleTree with `size` items
-    pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> CtMerkleTree<H, T> {
-        let mut t = CtMerkleTree::<H, T>::default();
+    pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> CtMerkleTree<Hash, Leaf> {
+        let mut t = CtMerkleTree::<Hash, Leaf>::default();
 
         for _ in 0..size {
             let val = rand_val(&mut rng);
@@ -289,19 +288,23 @@ pub(crate) mod test {
         t.self_check().expect("self check failed");
     }
 
-    // Checks that a serialization round trip doesn't affect the tree
+    // Checks that a serialization round trip doesn't affect trees or roots
     #[cfg(feature = "serde")]
     #[test]
     fn ser_deser() {
         let mut rng = rand::thread_rng();
-        let t1 = rand_tree(&mut rng, NUM_ITEMS);
+        let tree = rand_tree(&mut rng, NUM_ITEMS);
 
         // Serialize and deserialize the tree
-        let s = serde_json::to_string(&t1).unwrap();
-        let t2: CtMerkleTree<H, T> = serde_json::from_str(&s).unwrap();
+        let roundtrip_tree = crate::test_util::serde_roundtrip(&tree);
 
         // Run a self-check and ensure the root hasn't changed
-        t2.self_check().unwrap();
-        assert_eq!(t1.root(), t2.root());
+        roundtrip_tree.self_check().unwrap();
+        assert_eq!(tree.root(), roundtrip_tree.root());
+
+        // Now check that a serialization round trip doesn't affect roots
+        let root = tree.root();
+        let roundtrip_root = crate::test_util::serde_roundtrip(&root);
+        assert_eq!(root, roundtrip_root);
     }
 }

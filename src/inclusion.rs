@@ -182,12 +182,9 @@ pub(crate) mod test {
             // If serde is enabled, check that a serialization round trip doesn't affect the proof
             #[cfg(feature = "serde")]
             {
-                use crate::merkle_tree::test::H;
-
                 // Do a round trip and check that the byte representations match at the end
-                let s = serde_json::to_string(&proof).unwrap();
-                let deser_proof: super::InclusionProof<H> = serde_json::from_str(&s).unwrap();
-                assert_eq!(proof.as_bytes(), deser_proof.as_bytes());
+                let roundtrip_proof = crate::test_util::serde_roundtrip(&proof);
+                assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
             }
         }
     }
