@@ -9,8 +9,8 @@ impl LeafIdx {
         LeafIdx(idx)
     }
 
-    pub(crate) fn usize(&self) -> usize {
-        self.0 as usize
+    pub(crate) fn as_usize(&self) -> usize {
+        self.0
     }
 }
 
@@ -19,8 +19,8 @@ impl InternalIdx {
         InternalIdx(idx)
     }
 
-    pub(crate) fn usize(&self) -> usize {
-        self.0 as usize
+    pub(crate) fn as_usize(&self) -> usize {
+        self.0
     }
 }
 

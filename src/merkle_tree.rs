@@ -114,14 +114,14 @@ where
 
             // Compute the leaf hash and retrieve the stored leaf hash
             let expected_hash = leaf_hash::<H, _>(leaf);
-            let stored_hash = match self.internal_nodes.get(leaf_hash_idx.usize()) {
-                None => Err(SelfCheckError::MissingNode(leaf_hash_idx.usize())),
+            let stored_hash = match self.internal_nodes.get(leaf_hash_idx.as_usize()) {
+                None => Err(SelfCheckError::MissingNode(leaf_hash_idx.as_usize())),
                 Some(h) => Ok(h),
             }?;
 
             // If the hashes don't match, that's an error
             if stored_hash != &expected_hash {
-                return Err(SelfCheckError::IncorrectHash(leaf_hash_idx.usize()));
+                return Err(SelfCheckError::IncorrectHash(leaf_hash_idx.as_usize()));
             }
         }
 
@@ -140,23 +140,23 @@ where
 
                 let left_child = self
                     .internal_nodes
-                    .get(left_child_idx.usize())
-                    .ok_or(SelfCheckError::MissingNode(left_child_idx.usize()))?;
+                    .get(left_child_idx.as_usize())
+                    .ok_or(SelfCheckError::MissingNode(left_child_idx.as_usize()))?;
                 let right_child = self
                     .internal_nodes
-                    .get(right_child_idx.usize())
-                    .ok_or(SelfCheckError::MissingNode(right_child_idx.usize()))?;
+                    .get(right_child_idx.as_usize())
+                    .ok_or(SelfCheckError::MissingNode(right_child_idx.as_usize()))?;
 
                 // Compute the expected hash and get the stored hash
                 let expected_hash = parent_hash::<H>(left_child, right_child);
                 let stored_hash = self
                     .internal_nodes
-                    .get(parent_idx.usize())
-                    .ok_or(SelfCheckError::MissingNode(parent_idx.usize()))?;
+                    .get(parent_idx.as_usize())
+                    .ok_or(SelfCheckError::MissingNode(parent_idx.as_usize()))?;
 
                 // If the hashes don't match, that's an error
                 if stored_hash != &expected_hash {
-                    return Err(SelfCheckError::IncorrectHash(parent_idx.usize()));
+                    return Err(SelfCheckError::IncorrectHash(parent_idx.as_usize()));
                 }
             }
         }
@@ -168,9 +168,9 @@ where
     /// exist, i.e., this tree cannot be missing internal nodes.
     fn recaluclate_path(&mut self, leaf_idx: LeafIdx) {
         // First update the leaf hash
-        let leaf = &self.leaves[leaf_idx.usize()];
+        let leaf = &self.leaves[leaf_idx.as_usize()];
         let mut cur_idx: InternalIdx = leaf_idx.into();
-        self.internal_nodes[cur_idx.usize()] = leaf_hash::<H, _>(leaf);
+        self.internal_nodes[cur_idx.as_usize()] = leaf_hash::<H, _>(leaf);
 
         // Get some data for the upcoming loop
         let num_leaves = self.leaves.len();
@@ -181,18 +181,18 @@ where
             let parent_idx = cur_idx.parent(num_leaves);
 
             // Get the values of the current node and its sibling
-            let cur_node = &self.internal_nodes[cur_idx.usize()];
+            let cur_node = &self.internal_nodes[cur_idx.as_usize()];
             let sibling = {
                 let sibling_idx = &cur_idx.sibling(num_leaves);
-                &self.internal_nodes[sibling_idx.usize()]
+                &self.internal_nodes[sibling_idx.as_usize()]
             };
 
             // Compute the parent hash. If cur_node is to the left of the parent, the hash is
             // H(0x01 || cur_node || sibling). Otherwise it's H(0x01 || sibling || cur_node).
             if cur_idx.is_left(num_leaves) {
-                self.internal_nodes[parent_idx.usize()] = parent_hash::<H>(cur_node, sibling);
+                self.internal_nodes[parent_idx.as_usize()] = parent_hash::<H>(cur_node, sibling);
             } else {
-                self.internal_nodes[parent_idx.usize()] = parent_hash::<H>(sibling, cur_node);
+                self.internal_nodes[parent_idx.as_usize()] = parent_hash::<H>(sibling, cur_node);
             }
 
             // Go up a level
@@ -210,7 +210,7 @@ where
         } else {
             //  Otherwise it's the internal node at the root index
             let root_idx = root_idx(num_leaves);
-            self.internal_nodes[root_idx.usize()].clone()
+            self.internal_nodes[root_idx.as_usize()].clone()
         };
 
         RootHash {

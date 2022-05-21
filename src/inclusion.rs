@@ -87,7 +87,7 @@ where
         let start_idx = InternalIdx::from(LeafIdx::new(idx));
         let leaf_sibling_hash = {
             let sibling_idx = start_idx.sibling(num_leaves);
-            &self.internal_nodes[sibling_idx.usize()]
+            &self.internal_nodes[sibling_idx.as_usize()]
         };
         let mut sibling_hashes = leaf_sibling_hash.to_vec();
 
@@ -95,7 +95,7 @@ where
         let mut parent_idx = start_idx.parent(num_leaves);
         while parent_idx != root_idx {
             let sibling_idx = parent_idx.sibling(num_leaves);
-            sibling_hashes.extend_from_slice(&self.internal_nodes[sibling_idx.usize()]);
+            sibling_hashes.extend_from_slice(&self.internal_nodes[sibling_idx.as_usize()]);
 
             // Go up a level
             parent_idx = parent_idx.parent(num_leaves);

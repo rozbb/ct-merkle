@@ -105,7 +105,7 @@ where
             let ancestor_in_tree =
                 last_common_ancestor(starting_idx, num_tree_leaves, num_oldtree_leaves);
             // Record the point just before divergences
-            proof.extend_from_slice(&self.internal_nodes[ancestor_in_tree.usize()]);
+            proof.extend_from_slice(&self.internal_nodes[ancestor_in_tree.as_usize()]);
 
             ancestor_in_tree
         };
@@ -113,7 +113,7 @@ where
         // Now collect the copath, just like in the inclusion proof
         while path_idx != tree_root_idx {
             let sibling_idx = path_idx.sibling(num_tree_leaves);
-            proof.extend_from_slice(&self.internal_nodes[sibling_idx.usize()]);
+            proof.extend_from_slice(&self.internal_nodes[sibling_idx.as_usize()]);
 
             // Go up a level
             path_idx = path_idx.parent(num_tree_leaves);
