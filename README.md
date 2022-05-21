@@ -5,7 +5,7 @@ This is an implementation of the append-only log described in the [Certificate T
 
 The log has two important features:
 
-1. **Membership proofs.** You can construct a succinct proof that a particular item appears in a given tree.
+1. **Inclusion proofs.** You can construct a succinct proof that a particular item appears in a given tree.
 2. **Consistency proofs.** You can construct a succinct proof that one tree is a prefix of another tree, i.e., that tree #2 is the result of appending some number of items to the end of tree #1.
 
 
