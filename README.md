@@ -14,7 +14,6 @@ TODO
 
 * Implement `serde` traits for all the types
 * Think about how to make this portable to <64-bit architectures (can't use `u64` for indexing anymore)
-* Think about what it'd take to make this `no_std`
 
 
 License
