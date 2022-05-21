@@ -9,11 +9,15 @@ The log has two important features:
 2. **Consistency proofs.** You can construct a succinct proof that one tree is a prefix of another tree, i.e., that tree #2 is the result of appending some number of items to the end of tree #1.
 
 
-TODO
-----
+Crate Features
+--------------
 
-* Implement `serde` traits for all the types
-* Think about how to make this portable to <64-bit architectures (can't use `u64` for indexing anymore)
+Default feature flags: none
+
+Feature flag list:
+
+    * `serde` - Implements `serde::Serialize` and `serde::Deserialize` for: `CtMerkleTree`, `RootHash`, `InclusionProof`, and `ConsistencyProof`
+    * `std` - Implements `std::error::Error` for all the error types
 
 
 License
