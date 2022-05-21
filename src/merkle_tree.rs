@@ -1,4 +1,5 @@
 use crate::{
+    error::SelfCheckError,
     leaf::{leaf_hash, CanonicalSerialize},
     tree_math::*,
 };
@@ -7,7 +8,6 @@ use core::marker::PhantomData;
 use std::io::Error as IoError;
 
 use digest::Digest;
-use thiserror::Error;
 
 /// The domain separator used for calculating parent hashes
 const PARENT_HASH_PREFIX: &[u8] = &[0x01];
@@ -62,22 +62,6 @@ impl<H: Digest> PartialEq for RootHash<H> {
 
 impl<H: Digest> Eq for RootHash<H> {}
 
-/// An error returned during [`CtMerkleTree::self_check`]
-#[derive(Debug, Error)]
-pub enum SelfCheckError {
-    /// An item could not be serialized
-    #[error("could not canonically serialize a item")]
-    Io(#[from] IoError),
-
-    /// An internal node is missing from the tree
-    #[error("tree is missing an internal node")]
-    MissingNode,
-
-    /// An internal node has the wrong hash
-    #[error("an internal hash is incorrect")]
-    IncorrectHash,
-}
-
 impl<H, T> CtMerkleTree<H, T>
 where
     H: Digest,
@@ -118,15 +102,15 @@ where
             let leaf_hash_idx: InternalIdx = LeafIdx::new(leaf_idx as u64).into();
 
             // Compute the leaf hash and retrieve the stored leaf hash
-            let expected_hash = leaf_hash::<H, T>(leaf)?;
+            let expected_hash = leaf_hash::<H, _>(leaf);
             let stored_hash = match self.internal_nodes.get(leaf_hash_idx.usize()) {
-                None => Err(SelfCheckError::MissingNode),
+                None => Err(SelfCheckError::MissingNode(leaf_hash_idx.usize())),
                 Some(h) => Ok(h),
             }?;
 
             // If the hashes don't match, that's an error
             if stored_hash != &expected_hash {
-                return Err(SelfCheckError::IncorrectHash);
+                return Err(SelfCheckError::IncorrectHash(leaf_hash_idx.usize()));
             }
         }
 
@@ -137,28 +121,31 @@ where
             // of 2^(i+1).
             let start_idx = 2u64.pow(level) - 1;
             let step_size = 2usize.pow(level + 1);
-            for idx in (start_idx..num_nodes).step_by(step_size) {
+            for parent_idx in (start_idx..num_nodes).step_by(step_size) {
                 // Get the left and right children, erroring if they don't exist
-                let idx = InternalIdx::new(idx);
+                let parent_idx = InternalIdx::new(parent_idx);
+                let left_child_idx = parent_idx.left_child();
+                let right_child_idx = parent_idx.right_child(num_leaves);
+
                 let left_child = self
                     .internal_nodes
-                    .get(idx.left_child().usize())
-                    .ok_or(SelfCheckError::MissingNode)?;
+                    .get(left_child_idx.usize())
+                    .ok_or(SelfCheckError::MissingNode(left_child_idx.usize()))?;
                 let right_child = self
                     .internal_nodes
-                    .get(idx.right_child(num_leaves).usize())
-                    .ok_or(SelfCheckError::MissingNode)?;
+                    .get(right_child_idx.usize())
+                    .ok_or(SelfCheckError::MissingNode(right_child_idx.usize()))?;
 
                 // Compute the expected hash and get the stored hash
                 let expected_hash = parent_hash::<H>(left_child, right_child);
                 let stored_hash = self
                     .internal_nodes
-                    .get(idx.usize())
-                    .ok_or(SelfCheckError::MissingNode)?;
+                    .get(parent_idx.usize())
+                    .ok_or(SelfCheckError::MissingNode(parent_idx.usize()))?;
 
                 // If the hashes don't match, that's an error
                 if stored_hash != &expected_hash {
-                    return Err(SelfCheckError::IncorrectHash);
+                    return Err(SelfCheckError::IncorrectHash(parent_idx.usize()));
                 }
             }
         }
@@ -172,7 +159,7 @@ where
         // First update the leaf hash
         let leaf = &self.leaves[leaf_idx.usize()];
         let mut cur_idx: InternalIdx = leaf_idx.into();
-        self.internal_nodes[cur_idx.usize()] = leaf_hash::<H, T>(leaf)?;
+        self.internal_nodes[cur_idx.usize()] = leaf_hash::<H, _>(leaf);
 
         // Get some data for the upcoming loop
         let num_leaves = self.leaves.len() as u64;

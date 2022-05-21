@@ -1,19 +1,34 @@
-use std::io::{Error as IoError, Write};
+//! Types, functions, and traits for hashing leaves
 
 use digest::Digest;
 
+/// The domain separator used for calculating leaf hashes
 const LEAF_HASH_PREFIX: &[u8] = &[0x00];
+
+// The only reason this trait is defined is so that users don't have direct access to the hash
+// function being used. To keep things simple, we abstract the hasher in `LeafHasher` as a
+// `SimpleWriter`.
+/// A very small subset of `std::io::Write`. All this does is unconditionally accept bytes.
+pub trait SimpleWriter {
+    fn write(&mut self, buf: &[u8]);
+}
+
+impl<W: SimpleWriter + ?Sized> SimpleWriter for &mut W {
+    fn write(&mut self, buf: &[u8]) {
+        (**self).write(buf)
+    }
+}
 
 /// A trait impl'd by types that have a canonical byte representation. This MUST be implemented by
 /// any type you want to insert into a [`CtMerkleTree`](crate::merkle_tree::CtMerkleTree).
 pub trait CanonicalSerialize {
-    fn serialize<W: Write>(&self, writer: W) -> Result<(), IoError>;
+    fn serialize<W: SimpleWriter>(&self, writer: W);
 }
 
 // Blanket serialization impl for anything that resembles a bag of bytes
 impl<T: AsRef<[u8]>> CanonicalSerialize for T {
-    fn serialize<W: Write>(&self, mut writer: W) -> Result<(), IoError> {
-        writer.write_all(self.as_ref())
+    fn serialize<W: SimpleWriter>(&self, mut writer: W) {
+        writer.write(self.as_ref())
     }
 }
 
@@ -31,24 +46,19 @@ impl<H: Digest> LeafHasher<H> {
     }
 }
 
-impl<H: Digest> Write for LeafHasher<H> {
-    fn write(&mut self, buf: &[u8]) -> Result<usize, IoError> {
+impl<H: Digest> SimpleWriter for LeafHasher<H> {
+    fn write(&mut self, buf: &[u8]) {
         self.0.update(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> Result<(), IoError> {
-        Ok(())
     }
 }
 
 /// Computes the hash of the given leaf's canonical byte representation
-pub(crate) fn leaf_hash<H, L>(leaf: &L) -> Result<digest::Output<H>, IoError>
+pub(crate) fn leaf_hash<H, L>(leaf: &L) -> digest::Output<H>
 where
     H: Digest,
     L: CanonicalSerialize,
 {
     let mut hasher = LeafHasher::<H>::new();
-    leaf.serialize(&mut hasher)?;
-    Ok(hasher.finalize())
+    leaf.serialize(&mut hasher);
+    hasher.finalize()
 }

@@ -1,32 +1,15 @@
 //! Types and traits for inclusion proofs, a.k.a., Merkle Audit Paths
 
 use crate::{
+    error::InclusionVerifError,
     leaf::{leaf_hash, CanonicalSerialize},
     merkle_tree::{parent_hash, CtMerkleTree, RootHash},
     tree_math::*,
 };
 
 use core::marker::PhantomData;
-use std::io::Error as IoError;
 
 use digest::{typenum::Unsigned, Digest};
-use thiserror::Error;
-
-/// An error representing what went wrong during inclusion verification
-#[derive(Debug, Error)]
-pub enum InclusionVerifError {
-    /// An error occurred when serializing the item whose inclusion is being checked
-    #[error("could not canonically serialize a item")]
-    Io(#[from] IoError),
-
-    /// The proof is malformed
-    #[error("proof size is not a multiple of the hash digest size")]
-    MalformedProof,
-
-    /// The provided root hash does not match the proof's root hash w.r.t the item
-    #[error("inclusion verificaiton failed")]
-    Failure,
-}
 
 /// A proof that a value appears in a [`CtMerkleTree`]. The byte representation of a
 /// [`InclusionProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
@@ -133,12 +116,14 @@ impl<H: Digest> RootHash<H> {
             let tree_height = root_idx(self.num_leaves).level();
             (tree_height * H::OutputSize::U32) as usize
         };
+        // If the proof is too big or the proof length isn't a multiple of the digest size, that's
+        // an error
         if proof.len() > max_proof_size || proof.len() % H::OutputSize::USIZE != 0 {
             return Err(InclusionVerifError::MalformedProof);
         }
 
         // If the proof is empty, then the leaf hash is the root hash
-        let leaf_hash = leaf_hash::<H, T>(val)?;
+        let leaf_hash = leaf_hash::<H, _>(val);
         if proof.len() == 0 && leaf_hash == self.root_hash {
             return Ok(());
         }
@@ -163,7 +148,7 @@ impl<H: Digest> RootHash<H> {
         if cur_hash == self.root_hash {
             Ok(())
         } else {
-            Err(InclusionVerifError::Failure)
+            Err(InclusionVerifError::VerificationFailure)
         }
     }
 }

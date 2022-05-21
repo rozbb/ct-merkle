@@ -1,6 +1,7 @@
 //! Types and traits for Merkle consistency proofs
 
 use crate::{
+    error::ConsistencyVerifError,
     leaf::CanonicalSerialize,
     merkle_tree::{parent_hash, CtMerkleTree, RootHash},
     tree_math::*,
@@ -9,15 +10,6 @@ use crate::{
 use core::marker::PhantomData;
 
 use digest::{typenum::Unsigned, Digest};
-use thiserror::Error;
-
-/// An error representing what went wrong during consistency verification
-#[derive(Debug, Error)]
-pub enum ConsistencyVerifError {
-    /// The provided root hash does not match the proof's root hash w.r.t the item
-    #[error("consistency verificaiton failed")]
-    Failure,
-}
 
 /// A proof that one [`CtMerkleTree`] is a prefix of another. In other words, tree #2 is the result
 /// of appending some number of items to the end of tree #1. The byte representation of a
@@ -201,7 +193,7 @@ impl<H: Digest> RootHash<H> {
 
         // At the end, the old hash should be the old root, and the new hash should be the new root
         if (running_oldtree_hash != old_root.root_hash) || (running_tree_hash != self.root_hash) {
-            Err(ConsistencyVerifError::Failure)
+            Err(ConsistencyVerifError::VerificationFailure)
         } else {
             Ok(())
         }
