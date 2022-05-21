@@ -16,8 +16,8 @@ Default feature flags: none
 
 Feature flag list:
 
-    * `serde` - Implements `serde::Serialize` and `serde::Deserialize` for: `CtMerkleTree`, `RootHash`, `InclusionProof`, and `ConsistencyProof`
-    * `std` - Implements `std::error::Error` for all the error types
+* `serde` - Implements `serde::Serialize` and `serde::Deserialize` for: `CtMerkleTree`, `RootHash`, `InclusionProof`, and `ConsistencyProof`
+* `std` - Implements `std::error::Error` for all the error types
 
 
 License
