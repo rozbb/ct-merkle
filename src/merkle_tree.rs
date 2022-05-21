@@ -229,6 +229,11 @@ where
         self.leaves.get(idx as usize)
     }
 
+    /// Returns all the items
+    pub fn items(&self) -> &[T] {
+        &self.leaves
+    }
+
     /// Returns the number of items
     pub fn len(&self) -> usize {
         self.leaves.len()
