@@ -4,13 +4,16 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT/Apache-2.0"
 keywords = ["crypto", "tls", "certficate-transparency", "ct", "hash"]
-categories = ["cryptography", "network-programming", "compression"]
+categories = ["no-std", "cryptography", "network-programming", "compression"]
 description = "An implementation of the append-only log described in the Certificate Transparency specification (RFC 6962)"
 
 [dependencies]
 digest = "0.10"
 serde = { version = "1", features = [ "derive" ] }
-thiserror = "1"
+
+[features]
+default = []
+std = [ "digest/std", "serde/std" ]
 
 [dev-dependencies]
 hex = "0.4"

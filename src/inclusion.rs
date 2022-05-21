@@ -7,6 +7,7 @@ use crate::{
     tree_math::*,
 };
 
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use digest::{typenum::Unsigned, Digest};

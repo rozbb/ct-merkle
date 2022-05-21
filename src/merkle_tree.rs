@@ -4,8 +4,8 @@ use crate::{
     tree_math::*,
 };
 
+use alloc::vec::Vec;
 use core::marker::PhantomData;
-use std::io::Error as IoError;
 
 use digest::Digest;
 
@@ -72,7 +72,7 @@ where
     }
 
     /// Attemtps to push the given item to the list. Errors only when item serialization fails.
-    pub fn push(&mut self, new_val: T) -> Result<(), IoError> {
+    pub fn push(&mut self, new_val: T) {
         // We push the new value, a node for its hash, and a node for its parent (assuming the tree
         // isn't a singleton). The hash and parent nodes will get overwritten by recalculate_path()
         self.leaves.push(new_val);
@@ -155,7 +155,7 @@ where
 
     /// Recalculates the hashes on the path from `leaf_idx` to the root. The path MUST already
     /// exist, i.e., this tree cannot be missing internal nodes.
-    fn recaluclate_path(&mut self, leaf_idx: LeafIdx) -> Result<(), IoError> {
+    fn recaluclate_path(&mut self, leaf_idx: LeafIdx) {
         // First update the leaf hash
         let leaf = &self.leaves[leaf_idx.usize()];
         let mut cur_idx: InternalIdx = leaf_idx.into();
@@ -187,9 +187,6 @@ where
             // Go up a level
             cur_idx = parent_idx;
         }
-
-        // One the above loop is done, we've successfully updated the root node
-        Ok(())
     }
 
     /// Returns the root hash of this tree. The value and type uniquely describe this tree.
@@ -262,10 +259,9 @@ pub(crate) mod test {
     pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> CtMerkleTree<H, T> {
         let mut t = CtMerkleTree::<H, T>::default();
 
-        for i in 0..size {
+        for _ in 0..size {
             let val = rand_val(&mut rng);
-            t.push(val)
-                .expect(&format!("push failed at iteration {}", i));
+            t.push(val);
         }
 
         t

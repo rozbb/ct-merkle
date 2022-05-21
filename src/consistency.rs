@@ -7,6 +7,7 @@ use crate::{
     tree_math::*,
 };
 
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use digest::{typenum::Unsigned, Digest};
@@ -214,6 +215,8 @@ fn last_common_ancestor(mut idx: InternalIdx, num_leaves1: u64, num_leaves2: u64
 pub(crate) mod test {
     use crate::merkle_tree::test::{rand_tree, rand_val};
 
+    use alloc::format;
+
     // Tests that an honestly generated consistency proof verifies
     #[test]
     fn consistency_proof_correctness() {
@@ -227,7 +230,7 @@ pub(crate) mod test {
                 // Now add to v
                 for _ in 0..num_to_add {
                     let val = rand_val(&mut rng);
-                    t.push(val).unwrap();
+                    t.push(val);
                 }
                 let new_root = t.root();
 

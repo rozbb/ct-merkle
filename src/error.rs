@@ -70,3 +70,12 @@ impl fmt::Display for SelfCheckError {
         }
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for InclusionVerifError {}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ConsistencyVerifError {}
+
+#[cfg(feature = "std")]
+impl std::error::Error for SelfCheckError {}

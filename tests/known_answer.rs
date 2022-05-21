@@ -110,7 +110,7 @@ fn tree_with_size(num_leaves: usize) -> CtMerkleTree<Sha256, Vec<u8>> {
         .iter()
         .take(num_leaves)
         .map(|l| hex::decode(l).unwrap())
-        .for_each(|l| t.push(l).unwrap());
+        .for_each(|l| t.push(l));
 
     t
 }
