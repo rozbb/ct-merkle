@@ -26,21 +26,7 @@ pub struct ConsistencyProof<H: Digest> {
     _marker: PhantomData<H>,
 }
 
-/// A reference to a [`ConsistencyProof`]
-#[derive(Copy, Clone, Debug)]
-pub struct ConsistencyProofRef<'a, H: Digest> {
-    proof: &'a [u8],
-    _marker: PhantomData<H>,
-}
-
 impl<H: Digest> ConsistencyProof<H> {
-    pub fn as_ref(&self) -> ConsistencyProofRef<H> {
-        ConsistencyProofRef {
-            proof: self.proof.as_slice(),
-            _marker: self._marker,
-        }
-    }
-
     /// Returns the RFC 6962-compatible byte representation of this conssitency proof
     pub fn as_bytes(&self) -> &[u8] {
         self.proof.as_slice()
@@ -50,12 +36,12 @@ impl<H: Digest> ConsistencyProof<H> {
     ///
     /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
     /// is not a concatenated sequence of hash digests.
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
         if bytes.len() % H::OutputSize::USIZE != 0 {
             panic!("malformed consistency proof");
         } else {
             ConsistencyProof {
-                proof: bytes.to_vec(),
+                proof: bytes,
                 _marker: PhantomData,
             }
         }
@@ -134,7 +120,7 @@ impl<H: Digest> RootHash<H> {
     pub fn verify_consistency(
         &self,
         old_root: &RootHash<H>,
-        proof: &ConsistencyProofRef<H>,
+        proof: &ConsistencyProof<H>,
     ) -> Result<(), ConsistencyVerifError> {
         let starting_idx: InternalIdx = LeafIdx::new(old_root.num_leaves - 1).into();
         let num_tree_leaves = self.num_leaves;
@@ -248,7 +234,7 @@ pub(crate) mod test {
                 // Now make a consistency proof and check it
                 let proof = t.prove_consistency(initial_size);
                 new_root
-                    .verify_consistency(&initial_root, &proof.as_ref())
+                    .verify_consistency(&initial_root, &proof)
                     .expect(&format!(
                         "Consistency check failed for {} -> {} leaves",
                         initial_size,

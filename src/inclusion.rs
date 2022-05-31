@@ -25,41 +25,22 @@ pub struct InclusionProof<H: Digest> {
     _marker: PhantomData<H>,
 }
 
-/// A reference to a [`InclusionProof`]
-#[derive(Copy, Clone, Debug)]
-pub struct InclusionProofRef<'a, H: Digest> {
-    proof: &'a [u8],
-    _marker: PhantomData<H>,
-}
-
-impl<H: Digest> AsRef<[u8]> for InclusionProof<H> {
-    fn as_ref(&self) -> &[u8] {
-        self.proof.as_slice()
-    }
-}
-
 impl<H: Digest> InclusionProof<H> {
-    pub fn as_ref(&self) -> InclusionProofRef<H> {
-        InclusionProofRef {
-            proof: self.proof.as_slice(),
-            _marker: self._marker,
-        }
-    }
-
     /// Returns the RFC 6962-compatible byte representation of this inclusion proof
     pub fn as_bytes(&self) -> &[u8] {
         self.proof.as_slice()
     }
 
-    /// Constructs a `InclusionProof` from the given bytes. Panics when `bytes.len()` is not a
-    /// multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is not a concatenated sequence of
-    /// hash digests.
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    /// Constructs a `InclusionProof` from the given bytes.
+    ///
+    /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
+    /// is not a concatenated sequence of hash digests.
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
         if bytes.len() % H::OutputSize::USIZE != 0 {
             panic!("malformed inclusion proof");
         } else {
             InclusionProof {
-                proof: bytes.to_vec(),
+                proof: bytes,
                 _marker: PhantomData,
             }
         }
@@ -115,10 +96,10 @@ impl<H: Digest> RootHash<H> {
         &self,
         val: &T,
         idx: usize,
-        proof: &InclusionProofRef<H>,
+        proof: &InclusionProof<H>,
     ) -> Result<(), InclusionVerifError> {
         // Check that the proof isn't too big, and is made up of a sequence of hash digests
-        let InclusionProofRef { proof, .. } = proof;
+        let InclusionProof { proof, .. } = proof;
         let max_proof_size = {
             let tree_height = root_idx(self.num_leaves).level();
             (tree_height * H::OutputSize::U32) as usize
@@ -178,7 +159,7 @@ pub(crate) mod test {
 
             // Now check the proof
             let root = t.root();
-            root.verify_inclusion(&elem, idx, &proof.as_ref()).unwrap();
+            root.verify_inclusion(&elem, idx, &proof).unwrap();
 
             // Do a round trip and check that the byte representations match at the end
             let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
