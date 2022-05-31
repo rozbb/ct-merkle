@@ -47,7 +47,9 @@ where
     }
 }
 
-/// The root hash of a [`CtMerkleTree`]
+/// The root hash of a [`CtMerkleTree`]. This uniquely represents the tree. The [`Self::as_bytes`]
+/// representation of this struct is equal to the Merkle Tree Hash (MTH) of the tree that created
+/// it, as defined in RFC 6962 §2.1.
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct RootHash<H: Digest> {
@@ -55,11 +57,11 @@ pub struct RootHash<H: Digest> {
     // The serde bounds are "" here because every digest::Output is Serializable and
     // Deserializable, with no extra assumptions necessary
     #[cfg_attr(feature = "serde", serde(bound(deserialize = "", serialize = "")))]
-    pub root_hash: digest::Output<H>,
+    pub(crate) root_hash: digest::Output<H>,
 
     /// The number of leaves in the Merkle tree that this root represents. That is, the number of
     /// items inserted into the [`CtMerkleTree`] that created with `RootHash`.
-    pub num_leaves: usize,
+    pub(crate) num_leaves: usize,
 }
 
 impl<H: Digest> PartialEq for RootHash<H> {
@@ -69,6 +71,27 @@ impl<H: Digest> PartialEq for RootHash<H> {
 }
 
 impl<H: Digest> Eq for RootHash<H> {}
+
+impl<H: Digest> RootHash<H> {
+    /// Constructs a `RootHash` from the given hash digest and the number of leaves in the tree
+    /// that created it.
+    pub fn new(digest: digest::Output<H>, num_leaves: usize) -> RootHash<H> {
+        RootHash {
+            root_hash: digest,
+            num_leaves,
+        }
+    }
+
+    /// Returns the Merkle Tree Hash of the tree that created this `RootHash`.
+    pub fn as_bytes(&self) -> &digest::Output<H> {
+        &self.root_hash
+    }
+
+    /// Returns the number of leaves in the tree that created this `RootHash`.
+    pub fn num_leaves(&self) -> usize {
+        self.num_leaves
+    }
+}
 
 impl<H, T> CtMerkleTree<H, T>
 where
@@ -296,7 +319,7 @@ pub(crate) mod test {
         let tree = rand_tree(&mut rng, NUM_ITEMS);
 
         // Serialize and deserialize the tree
-        let roundtrip_tree = crate::test_util::serde_roundtrip(&tree);
+        let roundtrip_tree = crate::test_util::serde_roundtrip(tree.clone());
 
         // Run a self-check and ensure the root hasn't changed
         roundtrip_tree.self_check().unwrap();
@@ -304,7 +327,7 @@ pub(crate) mod test {
 
         // Now check that a serialization round trip doesn't affect roots
         let root = tree.root();
-        let roundtrip_root = crate::test_util::serde_roundtrip(&root);
+        let roundtrip_root = crate::test_util::serde_roundtrip(root.clone());
         assert_eq!(root, roundtrip_root);
     }
 }

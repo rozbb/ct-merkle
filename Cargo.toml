@@ -1,11 +1,14 @@
 [package]
 name = "ct-merkle"
+repository = "https://github.com/rozbb/ct-merkle"
+documentation = "https://docs.rs/ct-merkle"
+description = "An implementation of the append-only log described in the Certificate Transparency specification (RFC 6962)"
+readme = "README.md"
 version = "0.1.0"
 edition = "2021"
 license = "MIT/Apache-2.0"
 keywords = ["crypto", "tls", "certficate-transparency", "ct", "hash"]
 categories = ["no-std", "cryptography", "network-programming", "compression"]
-description = "An implementation of the append-only log described in the Certificate Transparency specification (RFC 6962)"
 
 [dependencies]
 digest = "0.10"

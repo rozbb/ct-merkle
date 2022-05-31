@@ -69,8 +69,7 @@ where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Returns a proof of inclusion of the item at the given index. Panics if `idx` exceeds
-    /// `Self::len()`.
+    /// Returns a proof of inclusion of the item at the given index. Panics if `idx >= self.len()`.
     pub fn prove_inclusion(&self, idx: usize) -> InclusionProof<H> {
         let num_leaves = self.leaves.len();
         let root_idx = root_idx(num_leaves);
@@ -179,13 +178,9 @@ pub(crate) mod test {
             let root = t.root();
             root.verify_inclusion(&elem, idx, &proof.as_ref()).unwrap();
 
-            // If serde is enabled, check that a serialization round trip doesn't affect the proof
-            #[cfg(feature = "serde")]
-            {
-                // Do a round trip and check that the byte representations match at the end
-                let roundtrip_proof = crate::test_util::serde_roundtrip(&proof);
-                assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
-            }
+            // Do a round trip and check that the byte representations match at the end
+            let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
+            assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
         }
     }
 }

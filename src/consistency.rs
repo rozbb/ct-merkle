@@ -66,7 +66,7 @@ where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Produces a proof that this `CtMerkleTree` is the result of appending to a tree containing
+    /// Produces a proof that this `CtMerkleTree` is the result of appending to the tree containing
     /// the same first `slice_size` items.
     ///
     /// Panics if `slice_size == 0` or `slice_size > self.len()`.
@@ -252,14 +252,9 @@ pub(crate) mod test {
                         initial_size + num_to_add
                     ));
 
-                // If serde is enabled, check that a serialization round trip doesn't affect the
-                // proof
-                #[cfg(feature = "serde")]
-                {
-                    // Do a round trip and check that the byte representations match at the end
-                    let roundtrip_proof = crate::test_util::serde_roundtrip(&proof);
-                    assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
-                }
+                // Do a round trip and check that the byte representations match at the end
+                let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
+                assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
             }
         }
     }
