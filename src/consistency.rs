@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use digest::{typenum::Unsigned, Digest};
+use subtle::ConstantTimeEq;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
@@ -197,7 +198,9 @@ impl<H: Digest> RootHash<H> {
         }
 
         // At the end, the old hash should be the old root, and the new hash should be the new root
-        if (running_oldtree_hash != old_root.root_hash) || (running_tree_hash != self.root_hash) {
+        let oldtree_eq = running_oldtree_hash.ct_eq(&old_root.root_hash);
+        let tree_eq = running_tree_hash.ct_eq(&self.root_hash);
+        if !bool::from(oldtree_eq & tree_eq) {
             Err(ConsistencyVerifError::VerificationFailure)
         } else {
             Ok(())

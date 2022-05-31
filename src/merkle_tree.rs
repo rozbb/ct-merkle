@@ -7,6 +7,7 @@ use crate::{
 use alloc::vec::Vec;
 
 use digest::Digest;
+use subtle::ConstantTimeEq;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
@@ -65,8 +66,9 @@ pub struct RootHash<H: Digest> {
 }
 
 impl<H: Digest> PartialEq for RootHash<H> {
+    /// Compares this `RootHash` to another in constant time.
     fn eq(&self, other: &RootHash<H>) -> bool {
-        self.root_hash == other.root_hash
+        self.root_hash.ct_eq(&other.root_hash).into()
     }
 }
 

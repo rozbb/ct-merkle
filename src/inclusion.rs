@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use digest::{typenum::Unsigned, Digest};
+use subtle::ConstantTimeEq;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
@@ -150,7 +151,7 @@ impl<H: Digest> RootHash<H> {
         }
 
         // Now compare the final hash with the root hash
-        if cur_hash == self.root_hash {
+        if cur_hash.ct_eq(&self.root_hash).into() {
             Ok(())
         } else {
             Err(InclusionVerifError::VerificationFailure)
