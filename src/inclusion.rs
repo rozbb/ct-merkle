@@ -112,7 +112,7 @@ impl<H: Digest> RootHash<H> {
 
         // If the proof is empty, then the leaf hash is the root hash
         let leaf_hash = leaf_hash::<H, _>(val);
-        if proof.len() == 0 && leaf_hash == self.root_hash {
+        if proof.is_empty() && leaf_hash == self.root_hash {
             return Ok(());
         }
 

@@ -262,6 +262,11 @@ where
     pub fn len(&self) -> usize {
         self.leaves.len()
     }
+
+    /// Returns true if this tree has no items
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// Computes the parent of the two given subtrees. This is `H(0x01 || left || right)`.
