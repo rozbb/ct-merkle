@@ -7,7 +7,7 @@ readme = "README.md"
 version = "0.1.0"
 edition = "2021"
 license = "MIT/Apache-2.0"
-keywords = ["crypto", "tls", "certficate-transparency", "ct", "hash"]
+keywords = ["crypto", "tls", "pki", "ct", "hash"]
 categories = ["no-std", "cryptography", "network-programming", "compression"]
 
 [dependencies]
