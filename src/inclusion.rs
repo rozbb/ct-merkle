@@ -26,6 +26,7 @@ pub struct InclusionProof<H: Digest> {
 }
 
 /// A reference to a [`InclusionProof`]
+#[derive(Copy, Clone, Debug)]
 pub struct InclusionProofRef<'a, H: Digest> {
     proof: &'a [u8],
     _marker: PhantomData<H>,

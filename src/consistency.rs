@@ -27,7 +27,7 @@ pub struct ConsistencyProof<H: Digest> {
 }
 
 /// A reference to a [`ConsistencyProof`]
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct ConsistencyProofRef<'a, H: Digest> {
     proof: &'a [u8],
     _marker: PhantomData<H>,
@@ -130,7 +130,7 @@ where
 impl<H: Digest> RootHash<H> {
     /// Verifies that the tree described by `old_root` is a prefix of the tree described by `self`.
     ///
-    /// Panics if `old_root.num_leaves == 0` or `old_root.num_leaves > self.num_leaves`.
+    /// Panics if `old_root.num_leaves() == 0` or `old_root.num_leaves() > self.num_leaves()`.
     pub fn verify_consistency(
         &self,
         old_root: &RootHash<H>,
