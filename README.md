@@ -1,5 +1,8 @@
 CT Merkle
 =========
+[![Crate](https://img.shields.io/crates/v/ct-merkle.svg)](https://crates.io/crates/ct-merkle)
+[![Docs](https://docs.rs/ct-merkle/badge.svg)](https://docs.rs/ct-merkle)
+[![CI](https://github.com/rozbb/ct-merkle/workflows/CI/badge.svg)](https://github.com/rozbb/ct-merkle/actions)
 
 This is an implementation of the append-only log described in the [Certificate Transparency specification (RFC 6962)](https://datatracker.ietf.org/doc/html/rfc6962). The log is a Merkle tree, and its leaves are the items it contains.
 
