@@ -52,7 +52,9 @@ where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Returns a proof of inclusion of the item at the given index. Panics if `idx >= self.len()`.
+    /// Returns a proof of inclusion of the item at the given index.
+    ///
+    /// Panics if `idx >= self.len()`.
     pub fn prove_inclusion(&self, idx: usize) -> InclusionProof<H> {
         let num_leaves = self.leaves.len();
         let root_idx = root_idx(num_leaves);

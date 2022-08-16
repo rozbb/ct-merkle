@@ -47,16 +47,26 @@ impl<H: Digest> BatchInclusionProof<H> {
     }
 }
 
+/// Splits `v`, returning the vector containing the elements at indices `[0, at)` and
+/// mutating `v` to contain the elements indices `[at, len)`. In other words, this is the
+/// opposite of `Vec::split_off`
+fn multipop<T>(v: &mut Vec<T>, at: usize) -> Vec<T> {
+    let suffix = v.split_off(at);
+    core::mem::replace(v, suffix)
+}
+
 impl<H, T> CtMerkleTree<H, T>
 where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Returns a proof of inclusion of the item at the given index. Panics if `idx >= self.len()`.
+    /// Returns a batched proof of inclusion of the items at the given indices.
+    ///
+    /// Panics if `idxs[i] >= self.len()` for any `i`.
     pub fn prove_batch_inclusion(&self, idxs: &[usize]) -> BatchInclusionProof<H> {
         // Sort the indices
-        let idxs = {
-            let mut buf: Vec<InternalIdx> = idxs
+        let idxs: Vec<InternalIdx> = {
+            let mut buf: Vec<_> = idxs
                 .iter()
                 .map(|&idx| InternalIdx::from(LeafIdx::new(idx)))
                 .collect();
@@ -74,28 +84,33 @@ where
             };
         }
 
-        // We start at the maximum rlevel and decrease with every round. Not every idx is at the
-        // same rlevel, so we need to keep some aside to add at the appropriate level. This vec is
-        // already reverse-sorted by rlevel because idx1 < idx2 implies rlevel(idx1) ≥
-        // rlevel(idx2) in any complete binary tree.
-        let unadded_idxs = idxs;
+        // We start at the maximum rlevel and decrease with every round. Not every leaf is at the
+        // same rlevel, so we need to keep some aside to add at the appropriate iteration. This vec
+        // is already reverse-sorted by rlevel because i < j implies rlevel(i) ≥ rlevel(j) in any
+        // complete binary tree.
+        let mut unadded_leaves = idxs;
 
-        let mut cur_rlevel = (&unadded_idxs[0]).rlevel(num_leaves);
-        let (mut cur_subtrees, mut unadded_idxs) = {
-            let split = unadded_idxs
+        // Start with the deepest set of leaves
+        let mut cur_rlevel = (&unadded_leaves[0]).rlevel(num_leaves);
+        // INVARIANT: cur_subtrees will always be sorted (ascending) by index
+        let mut cur_subtrees = {
+            // Find the next deepest leaf and cut the vec off there
+            let split = unadded_leaves
                 .iter()
                 .position(|idx| idx.rlevel(num_leaves) < cur_rlevel)
-                .unwrap_or(unadded_idxs.len());
-            let (l, r) = unadded_idxs.split_at(split);
-            (l.to_vec(), r.to_vec())
+                .unwrap_or(unadded_leaves.len());
+            multipop(&mut unadded_leaves, split)
         };
 
         let mut proof = Vec::new();
 
+        // We grow the subtrees until they converge to the root
         while cur_rlevel > 0 {
             let mut next_subtrees = Vec::new();
             let mut i = 0;
 
+            // Go through the current subtree set, computing parents and merging any adjacent
+            // subtrees which happen to be siblings
             while i < cur_subtrees.len() {
                 let idx = &cur_subtrees[i];
                 next_subtrees.push(idx.parent(num_leaves));
@@ -118,23 +133,35 @@ where
                 i += 1;
             }
 
+            // We're done with this level. Find all the unadded leaves from the next level and add
+            // them.
             cur_rlevel -= 1;
-            let (nodes_to_add, mut next_unadded_idxs) = {
-                let split = unadded_idxs
+            let leaves_to_add = {
+                // Find the next deepest leaf and cut the vec off there
+                let split = unadded_leaves
                     .iter()
                     .position(|idx| idx.rlevel(num_leaves) < cur_rlevel)
-                    .unwrap_or(unadded_idxs.len());
-                let (l, r) = unadded_idxs.split_at(split);
-                (l.to_vec(), r.to_vec())
+                    .unwrap_or(unadded_leaves.len());
+                multipop(&mut unadded_leaves, split)
             };
-            next_subtrees.extend_from_slice(&nodes_to_add);
-            next_subtrees.sort();
-            core::mem::swap(&mut unadded_idxs, &mut next_unadded_idxs);
+            next_subtrees.extend_from_slice(&leaves_to_add);
+
+            // INVARIANT: next_subtrees is sorted (ascending).
+            // We can prove this quickly. After the above line, next_subtrees is of the form
+            // [parent(idx1), ..., parent(idxk), idx(k+1), ..., idxn] for some integers k, n. By
+            // induction, cur_subtrees is sorted, because the first cur_subtrees came from idxs
+            // which is sorted, and cur_subtrees is the previous next_subtrees. Since parent() of a
+            // sorted list is sorted, the LHS of next_subtrees is sorted. Further, since the RHS
+            // comes from unadded_leaves, which is sorted by idx (as well as rlevel), the RHS is
+            // sorted.
+            // It remains only to prove that parent(idxk) ≤ idx(k+1). Well, we know
+            // rlevel(idx(k+1)) < rlevel(parent(idxk)), otherwise idx(k+1) would have been taken
+            // from leaves_to_add already. Recall that i < j implies rlevel(i) ≥ rlevel(j) in any
+            // complete binary tree. By contrapositive, idx(k+1) ≥ parent(idxk).
+
+            // Update the current subtrees
             core::mem::swap(&mut cur_subtrees, &mut next_subtrees);
         }
-
-        // Sanity check, the last value of cur_subtrees should be the root of the whole tree
-        assert_eq!(&cur_subtrees, &[root_idx]);
 
         BatchInclusionProof {
             proof,
@@ -147,8 +174,7 @@ impl<H: Digest> RootHash<H> {
     /// For all `i`, verifies that `val[i]` occurs at index `idx[i]` in the tree described by this
     /// `RootHash`.
     ///
-    /// # Panics
-    /// Panics if `vals.len() != idxs.len()`
+    /// Panics if `vals.len() != idxs.len()`.
     pub fn verify_batch_inclusion<T: CanonicalSerialize>(
         &self,
         vals: &[T],
@@ -172,20 +198,27 @@ impl<H: Digest> RootHash<H> {
             .collect();
         leaf_kv.sort_by_key(|(idx, _)| *idx);
 
-        let unadded_leaves = leaf_kv;
+        // We start at the maximum rlevel and decrease with every round. Not every leaf is at the
+        // same rlevel, so we need to keep some aside to add at the appropriate iteration. This vec
+        // is already reverse-sorted by rlevel because i < j implies rlevel(i) ≥ rlevel(j) in any
+        // complete binary tree.
+        let mut unadded_leaves = leaf_kv;
 
+        // Start with the deepest set of leaves
         let mut cur_rlevel = (&unadded_leaves[0]).0.rlevel(self.num_leaves);
-        let (mut cur_subtrees, mut unadded_idxs) = {
+        // INVARIANT: cur_subtrees will always be sorted (ascending) by index
+        let mut cur_subtrees = {
+            // Find the next deepest leaf and cut the vec off there
             let split = unadded_leaves
                 .iter()
                 .position(|(idx, _)| idx.rlevel(self.num_leaves) < cur_rlevel)
                 .unwrap_or(unadded_leaves.len());
-            let (l, r) = unadded_leaves.split_at(split);
-            (l.to_vec(), r.to_vec())
+            multipop(&mut unadded_leaves, split)
         };
 
-        let mut proof_chunks = proof.chunks(H::OutputSize::USIZE);
+        let mut sibling_hashes = proof.chunks(H::OutputSize::USIZE);
 
+        // We grow the subtrees until they converge to the root
         while cur_rlevel > 0 {
             let mut next_subtrees = Vec::new();
             let mut i = 0;
@@ -202,46 +235,54 @@ impl<H: Digest> RootHash<H> {
                     .map(|(idx2, _)| *idx2 == sibling_idx)
                     .unwrap_or(false)
                 {
+                    // Get the hash of the next subtree, ie the sibling subtree
                     let hash = &cur_subtrees[i + 1].1;
+
                     // Skip processing the sibling, since we're now merging it into the parent
                     i += 1;
 
                     hash
                 } else {
-                    // If the sibling hash isn't already known, then it must be in the proof
-                    let sibling_hash_slice = proof_chunks.next().unwrap();
+                    // If the sibling hash isn't already known, then it must be in the proof. If
+                    // it's not, then the proof is malformed
+                    let sibling_hash_slice = if let Some(h) = sibling_hashes.next() {
+                        h
+                    } else {
+                        return Err(InclusionVerifError::MalformedProof);
+                    };
                     digest::Output::<H>::from_slice(sibling_hash_slice)
                 };
 
                 // Compute the parent hash and save it for the next iteration
-                let par_hash = if cur_idx.is_left(self.num_leaves) {
+                let parent_hash = if cur_idx.is_left(self.num_leaves) {
                     parent_hash::<H>(&cur_hash, sibling_hash)
                 } else {
                     parent_hash::<H>(sibling_hash, &cur_hash)
                 };
-                next_subtrees.push((parent_idx, par_hash));
+                next_subtrees.push((parent_idx, parent_hash));
 
                 i += 1;
             }
 
+            // We're done with this level. Find all the unadded leaves from the next level and add
+            // them.
             cur_rlevel -= 1;
-            let (nodes_to_add, mut next_unadded_idxs) = {
-                let split = unadded_idxs
+            let nodes_to_add = {
+                // Find the next deepest leaf and cut the vec off there
+                let split = unadded_leaves
                     .iter()
                     .position(|(idx, _)| idx.rlevel(self.num_leaves) < cur_rlevel)
-                    .unwrap_or(unadded_idxs.len());
-                let (l, r) = unadded_idxs.split_at(split);
-                (l.to_vec(), r.to_vec())
+                    .unwrap_or(unadded_leaves.len());
+                multipop(&mut unadded_leaves, split)
             };
             next_subtrees.extend_from_slice(&nodes_to_add);
-            next_subtrees.sort_by_key(|(idx, _)| *idx);
-            core::mem::swap(&mut unadded_idxs, &mut next_unadded_idxs);
+
+            // INVARIANT: next_subtrees is sorted (ascending) by index.
+            // This is proved in the comments of prove_batch_inclusion
+
+            // Update the current subtrees
             core::mem::swap(&mut cur_subtrees, &mut next_subtrees);
         }
-
-        // Sanity check, the last value of cur_subtrees should be the root of the whole tree
-        assert_eq!(cur_subtrees.len(), 1);
-        assert_eq!(cur_subtrees[0].0, root_idx(self.num_leaves));
 
         // Now compare the final hash with the root hash
         if cur_subtrees[0].1.ct_eq(&self.root_hash).into() {
