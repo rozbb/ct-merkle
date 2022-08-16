@@ -1,7 +1,7 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct LeafIdx(usize);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct InternalIdx(usize);
 
 // I know I could just expose the underlying usize. But making it an opaque type with a
@@ -44,6 +44,23 @@ impl InternalIdx {
     // binary representation
     pub(crate) fn level(&self) -> u32 {
         self.0.trailing_ones()
+    }
+
+    // The rlevel of an internal node measures how far from the root it is. The root node is rlevel
+    // 0. Its children are rlevel 1, etc. This is not from the MLS spec.
+    pub(crate) fn rlevel(&self, num_leaves: usize) -> u32 {
+        let root = root_idx(num_leaves);
+
+        // Go up the tree until we hit the root
+        let mut l = 0;
+        let mut cur_node = *self;
+        while cur_node != root {
+            l += 1;
+            cur_node = cur_node.parent(num_leaves);
+        }
+
+        // Return the number of times we had to go up
+        l
     }
 
     // Returns whether this node is to the left of its parent

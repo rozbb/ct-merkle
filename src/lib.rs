@@ -5,6 +5,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+pub mod batch_inclusion;
 pub mod consistency;
 pub mod error;
 pub mod inclusion;
