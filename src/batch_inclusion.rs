@@ -74,7 +74,6 @@ where
             buf
         };
         let num_leaves = self.leaves.len();
-        let root_idx = root_idx(num_leaves);
 
         // If this is the singleton tree, the proof is empty
         if self.leaves.len() == 1 {
@@ -295,9 +294,10 @@ impl<H: Digest> RootHash<H> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::merkle_tree::test::rand_tree;
+    use crate::{merkle_tree::test::rand_tree, test_util::Hash};
 
     use alloc::vec::Vec;
+    use digest::Digest;
 
     // Tests that an honestly generated inclusion proof verifies
     #[test]
@@ -308,6 +308,7 @@ pub(crate) mod test {
 
         let t = rand_tree(&mut rng, num_leaves);
 
+        // We keep track of the largest observed proof size
         let mut max_proof_size = 0;
 
         // Check inclusion at every index
@@ -319,6 +320,7 @@ pub(crate) mod test {
                 .cloned()
                 .collect();
 
+            // Do the batch proof and record the proof size
             let proof = t.prove_batch_inclusion(&idxs);
             max_proof_size = core::cmp::max(max_proof_size, proof.as_bytes().len());
 
@@ -329,11 +331,38 @@ pub(crate) mod test {
             // Do a round trip and check that the byte representations match at the end
             let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
             assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
+
+            // Make sure the proof doesn't have any unnecessary repetition
+            let mut proof_hashes: Vec<&[u8]> = proof.proof.chunks(Hash::output_size()).collect();
+            // Note the proof size, deduplicate the hashes, and check that the proof size didn't
+            // decrease
+            let orig_num_hashes = proof_hashes.len();
+            proof_hashes.dedup();
+            assert_eq!(orig_num_hashes, proof_hashes.len());
         }
 
+        // The naive proving method is to do `batch_size` many inclusion proofs
         let _naive_proof_size = t.prove_inclusion(0).as_bytes().len() * batch_size;
 
         #[cfg(feature = "std")]
         std::println!("Proof sizes were {max_proof_size}B / {_naive_proof_size}B (batch / naive)");
+    }
+
+    // Tests that an out of range index makes batch proving panic
+    #[test]
+    #[should_panic]
+    fn idx_out_of_range() {
+        let mut rng = rand::thread_rng();
+        let num_leaves = 1000;
+        let batch_size = 100;
+
+        // Make a random tree and pick some arbitrary indices to batch prove
+        let t = rand_tree(&mut rng, num_leaves);
+        let mut idxs: Vec<_> = (34..34 + batch_size).collect();
+        // Set the 14th index to be out of range
+        idxs[14] = num_leaves + 1;
+
+        // This should panic with an out of range error
+        t.prove_batch_inclusion(&idxs);
     }
 }
