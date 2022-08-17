@@ -62,18 +62,26 @@ where
 {
     /// Returns a batched proof of inclusion of the items at the given indices.
     ///
-    /// Panics if `idxs[i] >= self.len()` for any `i`.
+    /// Panics if `idxs.is_empty()` or if `idxs[i] >= self.len()` for any `i`.
     pub fn prove_batch_inclusion(&self, idxs: &[usize]) -> BatchInclusionProof<H> {
-        // Sort the indices
-        let idxs: Vec<InternalIdx> = {
-            let mut buf: Vec<_> = idxs
-                .iter()
-                .map(|&idx| InternalIdx::from(LeafIdx::new(idx)))
-                .collect();
-            buf.sort();
-            buf
-        };
+        assert!(!idxs.is_empty(), "idxs is empty");
+
+        // Convert the leaf idxs to internal node idxs and sort
+        let mut idxs: Vec<InternalIdx> = idxs
+            .iter()
+            .map(|&idx| InternalIdx::from(LeafIdx::new(idx)))
+            .collect();
+        idxs.sort();
+
+        // Check that no indices are out of range. Since they're sorted, it suffices to check that
+        // the last one is within range. The first unwrap() is OK because we checked idxs isn't
+        // empty. The second unwrap() is OK because we know that everything in idxs is a leaf.
         let num_leaves = self.leaves.len();
+        let largest_idx = idxs.last().unwrap().as_leaf().unwrap().as_usize();
+        assert!(
+            largest_idx < num_leaves,
+            "idx {largest_idx} is out of range",
+        );
 
         // If this is the singleton tree, the proof is empty
         if self.leaves.len() == 1 {
@@ -173,7 +181,7 @@ impl<H: Digest> RootHash<H> {
     /// For all `i`, verifies that `val[i]` occurs at index `idx[i]` in the tree described by this
     /// `RootHash`.
     ///
-    /// Panics if `vals.len() != idxs.len()`.
+    /// Panics if `vals.len() != idxs.len()` or if `idxs[i] >= self.len()` for any `i`.
     pub fn verify_batch_inclusion<T: CanonicalSerialize>(
         &self,
         vals: &[T],
@@ -196,6 +204,15 @@ impl<H: Digest> RootHash<H> {
             .zip(vals.iter().map(leaf_hash::<H, _>))
             .collect();
         leaf_kv.sort_by_key(|(idx, _)| *idx);
+
+        // Check that no indices are out of range. Since they're sorted, it suffices to check that
+        // the last one is within range. The first unwrap() is OK because we checked idxs isn't
+        // empty. The second unwrap() is OK because we know that everything in idxs is a leaf.
+        let largest_idx = leaf_kv.last().unwrap().0.as_leaf().unwrap().as_usize();
+        assert!(
+            largest_idx < self.num_leaves,
+            "idx {largest_idx} is out of range",
+        );
 
         // We start at the maximum rlevel and decrease with every round. Not every leaf is at the
         // same rlevel, so we need to keep some aside to add at the appropriate iteration. This vec
@@ -294,7 +311,10 @@ impl<H: Digest> RootHash<H> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::{merkle_tree::test::rand_tree, test_util::Hash};
+    use crate::{
+        merkle_tree::test::rand_tree,
+        test_util::{Hash, Leaf},
+    };
 
     use alloc::vec::Vec;
     use digest::Digest;
@@ -351,7 +371,7 @@ pub(crate) mod test {
     // Tests that an out of range index makes batch proving panic
     #[test]
     #[should_panic]
-    fn idx_out_of_range() {
+    fn batch_proof_idx_out_of_range() {
         let mut rng = rand::thread_rng();
         let num_leaves = 1000;
         let batch_size = 100;
@@ -363,6 +383,45 @@ pub(crate) mod test {
         idxs[14] = num_leaves + 1;
 
         // This should panic with an out of range error
-        t.prove_batch_inclusion(&idxs);
+        let proof = t.prove_batch_inclusion(&idxs);
+
+        let root = t.root();
+        let vals: Vec<_> = idxs
+            .iter()
+            .map(|&idx| {
+                t.get(idx)
+                    .cloned()
+                    .unwrap_or(crate::test_util::Leaf::default())
+            })
+            .collect();
+
+        let _ = root.verify_batch_inclusion(&vals, &idxs, &proof);
+    }
+
+    // Tests that an out of range index makes batch verification panic
+    #[test]
+    #[should_panic]
+    fn batch_verif_idx_out_of_range() {
+        let mut rng = rand::thread_rng();
+        let num_leaves = 1000;
+        let batch_size = 100;
+
+        // Make a random tree and pick some arbitrary indices to batch prove
+        let t = rand_tree(&mut rng, num_leaves);
+        let mut idxs: Vec<_> = (34..34 + batch_size).collect();
+        let proof = t.prove_batch_inclusion(&idxs);
+
+        // Now set the 14th index to be out of range
+        idxs[14] = num_leaves + 1;
+
+        // Get some placeholder values for the verification
+        let root = t.root();
+        let vals: Vec<_> = idxs
+            .iter()
+            .map(|&idx| t.get(idx).cloned().unwrap_or(Leaf::default()))
+            .collect();
+
+        // Check that verification panics. Not errors, but panics.
+        let _ = root.verify_batch_inclusion(&vals, &idxs, &proof);
     }
 }

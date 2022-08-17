@@ -40,6 +40,15 @@ impl From<LeafIdx> for InternalIdx {
 }
 
 impl InternalIdx {
+    /// If this internal index is a leaf, returns its `LeafIdx`. Otherwise returns `None`.
+    pub(crate) fn as_leaf(&self) -> Option<LeafIdx> {
+        if self.0 % 2 == 0 {
+            Some(LeafIdx::new(self.0 / 2))
+        } else {
+            None
+        }
+    }
+
     // The level of an internal node is how "odd" it is, i.e., how many trailing ones it has in its
     // binary representation
     pub(crate) fn level(&self) -> u32 {

@@ -59,6 +59,8 @@ where
         let num_leaves = self.leaves.len();
         let root_idx = root_idx(num_leaves);
 
+        assert!(idx < num_leaves, "idx {idx} is out of range");
+
         // If this is the singleton tree, the proof is empty
         if self.leaves.len() == 1 {
             return InclusionProof {
@@ -100,6 +102,8 @@ impl<H: Digest> RootHash<H> {
         idx: usize,
         proof: &InclusionProof<H>,
     ) -> Result<(), InclusionVerifError> {
+        assert!(idx < self.num_leaves, "idx {idx} is out of range");
+
         // Check that the proof isn't too big, and is made up of a sequence of hash digests
         let InclusionProof { proof, .. } = proof;
         let max_proof_size = {
@@ -145,7 +149,7 @@ impl<H: Digest> RootHash<H> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::merkle_tree::test::rand_tree;
+    use crate::{merkle_tree::test::rand_tree, test_util::Leaf};
 
     // Tests that an honestly generated inclusion proof verifies
     #[test]
@@ -167,5 +171,33 @@ pub(crate) mod test {
             let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
             assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
         }
+    }
+
+    // Tests that an out of range index makes proving panic
+    #[should_panic]
+    #[test]
+    fn proof_idx_out_of_range() {
+        let mut rng = rand::thread_rng();
+
+        let t = rand_tree(&mut rng, 100);
+
+        // Try to prove inclusion at position 101. This should panic
+        t.prove_inclusion(101);
+    }
+
+    // Tests that an out of range index makes verifying panic
+    #[should_panic]
+    #[test]
+    fn verif_idx_out_of_range() {
+        let mut rng = rand::thread_rng();
+
+        let t = rand_tree(&mut rng, 100);
+
+        // Make placeholder values for everything
+        let elem = Leaf::default();
+        let proof = t.prove_inclusion(14);
+        let root = t.root();
+        // Check that verification panics. Not errors, but panics.
+        let _ = root.verify_inclusion(&elem, 101, &proof);
     }
 }
