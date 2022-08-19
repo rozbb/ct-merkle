@@ -189,7 +189,13 @@ impl<H: Digest> RootHash<H> {
         proof: &BatchInclusionProof<H>,
     ) -> Result<(), InclusionVerifError> {
         // Check that there as many vals as idxs
-        assert_eq!(vals.len(), idxs.len());
+        assert_eq!(
+            vals.len(),
+            idxs.len(),
+            "length mismatch: given {} values but {} indices",
+            vals.len(),
+            idxs.len()
+        );
 
         // Check that the proof is made up of a sequence of hash digests
         let BatchInclusionProof { proof, .. } = proof;
