@@ -78,11 +78,6 @@ const INCLUSION_VECS: &[InclusionTestVector] = &[
 const CONSISTENCY_VECS: &[ConsistencyTestVector] = &[
     ConsistencyTestVector {
         num_leaves1: 1,
-        num_leaves2: 1,
-        expected_proof: "",
-    },
-    ConsistencyTestVector {
-        num_leaves1: 1,
         num_leaves2: 8,
         expected_proof: "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7\
             5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e\

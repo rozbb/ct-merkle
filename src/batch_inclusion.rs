@@ -60,7 +60,8 @@ where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Returns a batched proof of inclusion of the items at the given indices.
+    /// Returns a batched proof of inclusion of the items at the given indices. Ordering of `idxs`
+    /// does not matter.
     ///
     /// Panics if `idxs.is_empty()` or if `idxs[i] >= self.len()` for any `i`.
     pub fn prove_batch_inclusion(&self, idxs: &[usize]) -> BatchInclusionProof<H> {
@@ -179,7 +180,8 @@ where
 
 impl<H: Digest> RootHash<H> {
     /// For all `i`, verifies that `val[i]` occurs at index `idx[i]` in the tree described by this
-    /// `RootHash`.
+    /// `RootHash`. Ordering of `vals` and `idxs` does not matter, so long as `idxs[i]` corresponds
+    /// to `vals[i]` for all `i`.
     ///
     /// Panics if `vals.len() != idxs.len()` or if `idxs[i] >= self.len()` for any `i`.
     pub fn verify_batch_inclusion<T: CanonicalSerialize>(

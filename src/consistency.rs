@@ -61,8 +61,8 @@ where
         if slice_size == 0 {
             panic!("cannot produce a consistency proof starting from an empty tree");
         }
-        if slice_size > self.len() {
-            panic!("proposed slice is greater than the tree itself");
+        if slice_size >= self.len() {
+            panic!("requested slice is at least as big as the tree itself");
         }
 
         let num_tree_leaves = self.leaves.len();
@@ -220,7 +220,7 @@ pub(crate) mod test {
         let mut rng = rand::thread_rng();
 
         for initial_size in 1..25 {
-            for num_to_add in 0..25 {
+            for num_to_add in 1..25 {
                 let mut t = rand_tree(&mut rng, initial_size);
                 let initial_root = t.root();
 
