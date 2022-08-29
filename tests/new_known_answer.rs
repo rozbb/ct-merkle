@@ -30,6 +30,7 @@ where
 
 type Leaf = [u8; 2];
 
+/// Generates a tree whose `i`-th leaf is the two-bytes big-endian encoding of `i`
 fn tree_with_size(num_leaves: u16) -> CtMerkleTree<Sha256, Leaf> {
     let mut t = CtMerkleTree::new();
 
@@ -43,6 +44,7 @@ fn tree_with_size(num_leaves: u16) -> CtMerkleTree<Sha256, Leaf> {
     t
 }
 
+// Helper for debugging KAT mismatches
 fn fmt_proof(proof: &[u8]) -> Vec<String> {
     proof.chunks(16).map(hex::encode).collect()
 }
