@@ -23,8 +23,14 @@ serde = [ "dep:serde", "generic-array/serde" ]
 
 [dev-dependencies]
 byteorder = "1"
+criterion = { version = "0.3", features = ["html_reports"] }
 hex = "0.4"
 rand = { version = "0.8", features = [ "std_rng" ] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
+
+# Criteron benches
+[[bench]]
+name = "benches"
+harness = false
