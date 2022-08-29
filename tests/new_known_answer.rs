@@ -58,12 +58,8 @@ fn batch_inclusion_kat() {
         batch_inclusion_proof,
     } in vecs
     {
-        println!("Num leaves: {num_leaves}");
-        println!("idxs: {:?}", idxs);
-
         // Construct an inclusion proof for the given tree and index
         let t = tree_with_size(num_leaves);
-        println!("{:#x?}", t);
         let proof = t.prove_batch_inclusion(&idxs);
 
         // Check that the proof is what we expected

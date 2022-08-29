@@ -55,23 +55,6 @@ impl InternalIdx {
         self.0.trailing_ones()
     }
 
-    // The rlevel of an internal node measures how far from the root it is. The root node is rlevel
-    // 0. Its children are rlevel 1, etc. This is not from the MLS spec.
-    pub(crate) fn rlevel(&self, num_leaves: usize) -> u32 {
-        let root = root_idx(num_leaves);
-
-        // Go up the tree until we hit the root
-        let mut l = 0;
-        let mut cur_node = *self;
-        while cur_node != root {
-            l += 1;
-            cur_node = cur_node.parent(num_leaves);
-        }
-
-        // Return the number of times we had to go up
-        l
-    }
-
     // Returns whether this node is to the left of its parent
     pub(crate) fn is_left(&self, num_leaves: usize) -> bool {
         let p = self.parent(num_leaves);
@@ -126,6 +109,20 @@ impl InternalIdx {
         } else {
             p.left_child()
         }
+    }
+
+    pub(crate) fn is_ancestor(&self, other: InternalIdx) -> bool {
+        if self.level() <= other.level() {
+            return false;
+        }
+
+        // Normalize the indices, shifting to the leftmost subtree
+        let my_level = self.level();
+        let normalized_self = 2usize.pow(my_level) - 1;
+        let diff = self.0 - normalized_self;
+        let normalized_other = other.0 - diff;
+
+        normalized_other <= 2 * (normalized_self)
     }
 }
 
