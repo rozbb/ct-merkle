@@ -18,7 +18,10 @@ subtle = { version = "2", default-features = false }
 
 [features]
 default = []
+# Implements std::Error for all error types. Also enables known-answer tests in cargo test.
 std = [ "digest/std" ]
+# Implements serde::Serialize and serde::Deserialize for: CtMerkleTree, RootHash, InclusionProof,
+# BatchInclusionProof, and ConsistencyProof.
 serde = [ "dep:serde", "generic-array/serde" ]
 
 [dev-dependencies]
