@@ -45,6 +45,23 @@ impl<H: Digest> InclusionProof<H> {
             }
         }
     }
+
+    /// Constructs a `InclusionProof` from the given bytes.
+    ///
+    /// # Errors
+    ///
+    /// If when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
+    /// is not a concatenated sequence of hash digests.
+    pub fn try_from_bytes(bytes: Vec<u8>) -> Result<Self, InclusionVerifError> {
+        if bytes.len() % H::OutputSize::USIZE != 0 {
+            return Err(InclusionVerifError::MalformedProof);
+        }
+
+        Ok(InclusionProof {
+            proof: bytes,
+            _marker: PhantomData,
+        })
+    }
 }
 
 impl<H, T> CtMerkleTree<H, T>
