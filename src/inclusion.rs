@@ -19,7 +19,7 @@ use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 /// A proof that a value appears in a [`CtMerkleTree`]. The byte representation of a
 /// [`InclusionProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InclusionProof<H: Digest> {
     proof: Vec<u8>,
     _marker: PhantomData<H>,
