@@ -250,7 +250,7 @@ where
 
     /// Tries to get the item at the given index
     pub fn get(&self, idx: usize) -> Option<&T> {
-        self.leaves.get(idx as usize)
+        self.leaves.get(idx)
     }
 
     /// Returns all the items

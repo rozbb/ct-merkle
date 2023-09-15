@@ -80,8 +80,7 @@ where
         // We have a special case when the old tree is a subtree of the current tree. This happens
         // when the old tree is a complete binary tree OR when the old tree equals this tree (i.e.,
         // nothing changed between the trees).
-        let oldtree_is_subtree =
-            slice_size.is_power_of_two() || slice_size == num_tree_leaves as usize;
+        let oldtree_is_subtree = slice_size.is_power_of_two() || slice_size == num_tree_leaves;
 
         // If the old tree is a subtree, then the starting idx for the path is the subtree root
         let mut path_idx = if oldtree_is_subtree {
