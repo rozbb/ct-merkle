@@ -19,7 +19,7 @@ use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 /// A proof that a value appears in a [`CtMerkleTree`]. The byte representation of a
 /// [`InclusionProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InclusionProof<H: Digest> {
     proof: Vec<u8>,
     _marker: PhantomData<H>,
@@ -44,6 +44,23 @@ impl<H: Digest> InclusionProof<H> {
                 _marker: PhantomData,
             }
         }
+    }
+
+    /// Constructs a `InclusionProof` from the given bytes.
+    ///
+    /// # Errors
+    ///
+    /// If when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
+    /// is not a concatenated sequence of hash digests.
+    pub fn try_from_bytes(bytes: Vec<u8>) -> Result<Self, InclusionVerifError> {
+        if bytes.len() % H::OutputSize::USIZE != 0 {
+            return Err(InclusionVerifError::MalformedProof);
+        }
+
+        Ok(InclusionProof {
+            proof: bytes,
+            _marker: PhantomData,
+        })
     }
 }
 
