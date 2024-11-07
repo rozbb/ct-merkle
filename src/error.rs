@@ -54,10 +54,17 @@ impl fmt::Display for ConsistencyVerifError {
 #[derive(Debug)]
 pub enum SelfCheckError {
     /// The node at the given index is missing
-    MissingNode(usize),
+    MissingNode(u64),
 
     /// The node at the given index has the wrong hash
-    IncorrectHash(usize),
+    IncorrectHash(u64),
+
+    /// The number of internal nodes in this struct exceeds the number of nodes that a tree with
+    /// this many leaves would hold.
+    TooManyInternalNodes,
+
+    /// There are so many leaves that the full tree could not possibly fit in memory
+    TooManyLeaves,
 }
 
 impl fmt::Display for SelfCheckError {
@@ -66,6 +73,19 @@ impl fmt::Display for SelfCheckError {
             SelfCheckError::MissingNode(idx) => write!(f, "the node at index {} is missing", idx),
             SelfCheckError::IncorrectHash(idx) => {
                 write!(f, "the node at index {} has the wrong hash", idx)
+            }
+            SelfCheckError::TooManyInternalNodes => {
+                write!(
+                    f,
+                    "the number of internal nodes in this struct exceedsc the number of nodes \
+                    that a tree with this many leaves would hold"
+                )
+            }
+            SelfCheckError::TooManyLeaves => {
+                write!(
+                    f,
+                    "there are so many leaves that the full tree could not possibly fit in memory"
+                )
             }
         }
     }

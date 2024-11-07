@@ -58,11 +58,13 @@ where
     ///
     /// Panics if `slice_size == 0` or `slice_size > self.len()`.
     pub fn prove_consistency(&self, slice_size: usize) -> ConsistencyProof<H> {
-        let num_leaves = self.leaves.len();
-        let idxs = indices_for_consistency_proof(num_leaves, slice_size);
+        let num_leaves = self.len();
+        let idxs = indices_for_consistency_proof(num_leaves, slice_size as u64);
+        // We can unwrap() below because all the given indices are in the tree, which we are storing
+        // in memory
         let proof = idxs
             .iter()
-            .flat_map(|i| &self.internal_nodes[i.as_usize()])
+            .flat_map(|&i| &self.internal_nodes[usize::try_from(i).unwrap()])
             .cloned()
             .collect();
         ConsistencyProof {
@@ -72,7 +74,7 @@ where
     }
 }
 
-fn indices_for_consistency_proof(num_tree_leaves: usize, slice_size: usize) -> Vec<InternalIdx> {
+fn indices_for_consistency_proof(num_tree_leaves: u64, slice_size: u64) -> Vec<u64> {
     if slice_size == 0 {
         panic!("cannot produce a consistency proof starting from an empty tree");
     }
@@ -105,7 +107,7 @@ fn indices_for_consistency_proof(num_tree_leaves: usize, slice_size: usize) -> V
         let ancestor_in_tree =
             last_common_ancestor(starting_idx, num_tree_leaves, num_oldtree_leaves);
         // Record the point just before divergences
-        out.push(ancestor_in_tree);
+        out.push(ancestor_in_tree.as_u64());
 
         ancestor_in_tree
     };
@@ -113,7 +115,7 @@ fn indices_for_consistency_proof(num_tree_leaves: usize, slice_size: usize) -> V
     // Now collect the copath, just like in the inclusion proof
     while path_idx != tree_root_idx {
         let sibling_idx = path_idx.sibling(num_tree_leaves);
-        out.push(sibling_idx);
+        out.push(sibling_idx.as_u64());
 
         // Go up a level
         path_idx = path_idx.parent(num_tree_leaves);
@@ -205,11 +207,7 @@ impl<H: Digest> RootHash<H> {
 
 /// Given an index `idx` that appears in two trees (num_leaves1 and num_leaves2), find the first
 /// ancestor of `idx` whose parent in tree1 is not the same as the parent in tree2.
-fn last_common_ancestor(
-    mut idx: InternalIdx,
-    num_leaves1: usize,
-    num_leaves2: usize,
-) -> InternalIdx {
+fn last_common_ancestor(mut idx: InternalIdx, num_leaves1: u64, num_leaves2: u64) -> InternalIdx {
     while idx.parent(num_leaves1) == idx.parent(num_leaves2) {
         idx = idx.parent(num_leaves1);
     }

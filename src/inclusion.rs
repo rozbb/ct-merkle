@@ -10,7 +10,7 @@ use crate::{
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use digest::{typenum::Unsigned, Digest, Output};
+use digest::{typenum::Unsigned, Digest};
 use subtle::ConstantTimeEq;
 
 #[cfg(feature = "serde")]
@@ -48,7 +48,7 @@ impl<H: Digest> InclusionProof<H> {
     }
 
     /// Constructs an `InclusionProof` from a sequence of digests.
-    pub fn from_digests<'a>(digests: impl IntoIterator<Item = &'a Output<H>>) -> Self {
+    pub fn from_digests<'a>(digests: impl IntoIterator<Item = &'a digest::Output<H>>) -> Self {
         // The proof is just a concatenation of hashes
         let concatenated_hashes = digests.into_iter().flatten().cloned().collect();
 
@@ -86,12 +86,15 @@ where
     /// # Panics
     /// Panics if `idx >= self.len()`.
     pub fn prove_inclusion(&self, idx: usize) -> InclusionProof<H> {
-        let num_leaves = self.leaves.len();
+        let num_leaves = self.len();
 
         // Get the indices we need to make the proof
-        let idxs = indices_for_inclusion_proof(num_leaves, idx);
-        // Get the hashes at those indices
-        let sibling_hashes = idxs.iter().map(|i| &self.internal_nodes[i.as_usize()]);
+        let idxs = indices_for_inclusion_proof(num_leaves, idx as u64);
+        // Get the hashes at those indices. We can unwrap below because the indices are guaranteed
+        // to be in the tree, which is stored in memory
+        let sibling_hashes = idxs
+            .iter()
+            .map(|&i| &self.internal_nodes[usize::try_from(i).unwrap()]);
 
         // Make the proof
         InclusionProof::from_digests(sibling_hashes)
@@ -105,7 +108,7 @@ where
 ///
 /// # Panics
 /// Panics when `num_leaves` is zero.
-fn indices_for_inclusion_proof(num_leaves: usize, idx: usize) -> Vec<InternalIdx> {
+fn indices_for_inclusion_proof(num_leaves: u64, idx: u64) -> Vec<u64> {
     if num_leaves == 0 {
         panic!("cannot create an inclusion proof for an empty tree")
     }
@@ -121,13 +124,13 @@ fn indices_for_inclusion_proof(num_leaves: usize, idx: usize) -> Vec<InternalIdx
     // Start the proof with the sibling hash
     let start_idx = InternalIdx::from(LeafIdx::new(idx));
     let sibling_idx = start_idx.sibling(num_leaves);
-    out.push(sibling_idx);
+    out.push(sibling_idx.as_u64());
 
     // Collect the hashes of the siblings on the way up the tree
     let mut parent_idx = start_idx.parent(num_leaves);
     while parent_idx != root_idx {
         let sibling_idx = parent_idx.sibling(num_leaves);
-        out.push(sibling_idx);
+        out.push(sibling_idx.as_u64());
 
         // Go up a level
         parent_idx = parent_idx.parent(num_leaves);
@@ -141,7 +144,7 @@ impl<H: Digest> RootHash<H> {
     pub fn verify_inclusion<T: CanonicalSerialize>(
         &self,
         val: &T,
-        idx: usize,
+        idx: u64,
         proof: &InclusionProof<H>,
     ) -> Result<(), InclusionVerifError> {
         // Check that the proof isn't too big, and is made up of a sequence of hash digests
@@ -199,13 +202,13 @@ pub(crate) mod test {
         let t = rand_tree(&mut rng, 100);
 
         // Check inclusion at every index
-        for idx in 0..t.len() {
+        for idx in 0..t.len() as usize {
             let proof = t.prove_inclusion(idx);
             let elem = t.get(idx).unwrap();
 
             // Now check the proof
             let root = t.root();
-            root.verify_inclusion(&elem, idx, &proof).unwrap();
+            root.verify_inclusion(&elem, idx as u64, &proof).unwrap();
 
             // Do a round trip and check that the byte representations match at the end
             let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
