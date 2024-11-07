@@ -3,7 +3,7 @@
 use crate::{
     error::InclusionVerifError,
     leaf::{leaf_hash, CanonicalSerialize},
-    merkle_tree::{parent_hash, CtMerkleTree, RootHash},
+    merkle_tree::{parent_hash, MemoryBackedTree, RootHash},
     tree_math::*,
 };
 
@@ -64,7 +64,7 @@ impl<H: Digest> InclusionProof<H> {
     }
 }
 
-impl<H, T> CtMerkleTree<H, T>
+impl<H, T> MemoryBackedTree<H, T>
 where
     H: Digest,
     T: CanonicalSerialize,

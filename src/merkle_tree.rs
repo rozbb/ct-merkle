@@ -20,7 +20,7 @@ const PARENT_HASH_PREFIX: &[u8] = &[0x01];
 /// Certificate Transparency logs (RFC 6962).
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
-pub struct CtMerkleTree<H, T>
+pub struct MemoryBackedTree<H, T>
 where
     H: Digest,
     T: CanonicalSerialize,
@@ -35,13 +35,13 @@ where
     pub(crate) internal_nodes: Vec<digest::Output<H>>,
 }
 
-impl<H, T> Default for CtMerkleTree<H, T>
+impl<H, T> Default for MemoryBackedTree<H, T>
 where
     H: Digest,
     T: CanonicalSerialize,
 {
     fn default() -> Self {
-        CtMerkleTree {
+        MemoryBackedTree {
             leaves: Vec::new(),
             internal_nodes: Vec::new(),
         }
@@ -95,7 +95,7 @@ impl<H: Digest> RootHash<H> {
     }
 }
 
-impl<H, T> CtMerkleTree<H, T>
+impl<H, T> MemoryBackedTree<H, T>
 where
     H: Digest,
     T: CanonicalSerialize,
@@ -296,8 +296,8 @@ pub(crate) mod test {
     }
 
     // Creates a random CtMerkleTree with `size` items
-    pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> CtMerkleTree<Hash, Leaf> {
-        let mut t = CtMerkleTree::<Hash, Leaf>::default();
+    pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> MemoryBackedTree<Hash, Leaf> {
+        let mut t = MemoryBackedTree::<Hash, Leaf>::default();
 
         for _ in 0..size {
             let val = rand_val(&mut rng);

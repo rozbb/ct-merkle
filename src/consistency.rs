@@ -3,7 +3,7 @@
 use crate::{
     error::ConsistencyVerifError,
     leaf::CanonicalSerialize,
-    merkle_tree::{parent_hash, CtMerkleTree, RootHash},
+    merkle_tree::{parent_hash, MemoryBackedTree, RootHash},
     tree_math::*,
 };
 
@@ -48,7 +48,7 @@ impl<H: Digest> ConsistencyProof<H> {
     }
 }
 
-impl<H, T> CtMerkleTree<H, T>
+impl<H, T> MemoryBackedTree<H, T>
 where
     H: Digest,
     T: CanonicalSerialize,
