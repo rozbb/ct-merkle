@@ -10,7 +10,7 @@ use crate::{
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use digest::{typenum::Unsigned, Digest};
+use digest::{typenum::Unsigned, Digest, Output};
 use subtle::ConstantTimeEq;
 
 #[cfg(feature = "serde")]
@@ -31,10 +31,11 @@ impl<H: Digest> InclusionProof<H> {
         self.proof.as_slice()
     }
 
-    /// Constructs a `InclusionProof` from the given bytes.
+    /// Constructs an `InclusionProof` from its serialized form.
     ///
-    /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
-    /// is not a concatenated sequence of hash digests.
+    /// # Panics
+    /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is
+    /// not a concatenated sequence of hash digests.
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         if bytes.len() % H::OutputSize::USIZE != 0 {
             panic!("malformed inclusion proof");
@@ -43,6 +44,17 @@ impl<H: Digest> InclusionProof<H> {
                 proof: bytes,
                 _marker: PhantomData,
             }
+        }
+    }
+
+    /// Constructs an `InclusionProof` from a sequence of digests.
+    pub fn from_digests<'a>(digests: impl IntoIterator<Item = &'a Output<H>>) -> Self {
+        // The proof is just a concatenation of hashes
+        let concatenated_hashes = digests.into_iter().flatten().cloned().collect();
+
+        InclusionProof {
+            proof: concatenated_hashes,
+            _marker: PhantomData,
         }
     }
 
@@ -69,42 +81,59 @@ where
     H: Digest,
     T: CanonicalSerialize,
 {
-    /// Returns a proof of inclusion of the item at the given index. Panics if `idx >= self.len()`.
+    /// Returns a proof of inclusion of the item at the given index.
+    ///
+    /// # Panics
+    /// Panics if `idx >= self.len()`.
     pub fn prove_inclusion(&self, idx: usize) -> InclusionProof<H> {
         let num_leaves = self.leaves.len();
-        let root_idx = root_idx(num_leaves);
 
-        // If this is the singleton tree, the proof is empty
-        if self.leaves.len() == 1 {
-            return InclusionProof {
-                proof: Vec::new(),
-                _marker: PhantomData,
-            };
-        }
+        // Get the indices we need to make the proof
+        let idxs = indices_for_inclusion_proof(num_leaves, idx);
+        // Get the hashes at those indices
+        let sibling_hashes = idxs.iter().map(|i| &self.internal_nodes[i.as_usize()]);
 
-        // Start the proof with the sibling hash
-        let start_idx = InternalIdx::from(LeafIdx::new(idx));
-        let leaf_sibling_hash = {
-            let sibling_idx = start_idx.sibling(num_leaves);
-            &self.internal_nodes[sibling_idx.as_usize()]
-        };
-        let mut sibling_hashes = leaf_sibling_hash.to_vec();
-
-        // Collect the hashes of the siblings on the way up the tree
-        let mut parent_idx = start_idx.parent(num_leaves);
-        while parent_idx != root_idx {
-            let sibling_idx = parent_idx.sibling(num_leaves);
-            sibling_hashes.extend_from_slice(&self.internal_nodes[sibling_idx.as_usize()]);
-
-            // Go up a level
-            parent_idx = parent_idx.parent(num_leaves);
-        }
-
-        InclusionProof {
-            proof: sibling_hashes,
-            _marker: PhantomData,
-        }
+        // Make the proof
+        InclusionProof::from_digests(sibling_hashes)
     }
+}
+
+/// Given a tree size and index, produces a list of tree node indices whose values we need in order
+/// to build the inclusion proof. This is useful when we don't have the entire tree in memory, e.g.,
+/// when it is stored on disk or stored in tiles on a remote server. Once the digests are retreived,
+/// they can be used in the same order in [`InclusionProof::from_digests`].
+///
+/// # Panics
+/// Panics when `num_leaves` is zero.
+fn indices_for_inclusion_proof(num_leaves: usize, idx: usize) -> Vec<InternalIdx> {
+    if num_leaves == 0 {
+        panic!("cannot create an inclusion proof for an empty tree")
+    }
+
+    let mut out = Vec::new();
+    let root_idx = root_idx(num_leaves);
+
+    // If this is the singleton tree, the proof is empty, and we need no values
+    if num_leaves == 1 {
+        return out;
+    }
+
+    // Start the proof with the sibling hash
+    let start_idx = InternalIdx::from(LeafIdx::new(idx));
+    let sibling_idx = start_idx.sibling(num_leaves);
+    out.push(sibling_idx);
+
+    // Collect the hashes of the siblings on the way up the tree
+    let mut parent_idx = start_idx.parent(num_leaves);
+    while parent_idx != root_idx {
+        let sibling_idx = parent_idx.sibling(num_leaves);
+        out.push(sibling_idx);
+
+        // Go up a level
+        parent_idx = parent_idx.parent(num_leaves);
+    }
+
+    out
 }
 
 impl<H: Digest> RootHash<H> {

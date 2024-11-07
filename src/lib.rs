@@ -15,5 +15,6 @@ mod tree_math;
 #[cfg(test)]
 mod test_util;
 
+pub use inclusion::*;
 pub use leaf::*;
 pub use merkle_tree::*;

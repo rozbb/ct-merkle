@@ -58,58 +58,68 @@ where
     ///
     /// Panics if `slice_size == 0` or `slice_size > self.len()`.
     pub fn prove_consistency(&self, slice_size: usize) -> ConsistencyProof<H> {
-        if slice_size == 0 {
-            panic!("cannot produce a consistency proof starting from an empty tree");
-        }
-        if slice_size > self.len() {
-            panic!("proposed slice is greater than the tree itself");
-        }
-
-        let num_tree_leaves = self.leaves.len();
-        let num_oldtree_leaves = slice_size;
-        let tree_root_idx = root_idx(num_tree_leaves);
-        let oldtree_root_idx = root_idx(num_oldtree_leaves);
-        let starting_idx: InternalIdx = LeafIdx::new(slice_size - 1).into();
-
-        // We have starting_idx in a current tree and a old tree. starting_idx occurs in a subtree
-        // which is both a subtree of the current tree and of the old tree.
-        // We want to find the largest such subtree, and start logging the copath after that.
-
-        let mut proof = Vec::new();
-
-        // We have a special case when the old tree is a subtree of the current tree. This happens
-        // when the old tree is a complete binary tree OR when the old tree equals this tree (i.e.,
-        // nothing changed between the trees).
-        let oldtree_is_subtree = slice_size.is_power_of_two() || slice_size == num_tree_leaves;
-
-        // If the old tree is a subtree, then the starting idx for the path is the subtree root
-        let mut path_idx = if oldtree_is_subtree {
-            oldtree_root_idx
-        } else {
-            // If the old tree isn't a subtree, find the first place that the ancestors of the
-            // starting index diverge
-            let ancestor_in_tree =
-                last_common_ancestor(starting_idx, num_tree_leaves, num_oldtree_leaves);
-            // Record the point just before divergences
-            proof.extend_from_slice(&self.internal_nodes[ancestor_in_tree.as_usize()]);
-
-            ancestor_in_tree
-        };
-
-        // Now collect the copath, just like in the inclusion proof
-        while path_idx != tree_root_idx {
-            let sibling_idx = path_idx.sibling(num_tree_leaves);
-            proof.extend_from_slice(&self.internal_nodes[sibling_idx.as_usize()]);
-
-            // Go up a level
-            path_idx = path_idx.parent(num_tree_leaves);
-        }
-
+        let num_leaves = self.leaves.len();
+        let idxs = indices_for_consistency_proof(num_leaves, slice_size);
+        let proof = idxs
+            .iter()
+            .flat_map(|i| &self.internal_nodes[i.as_usize()])
+            .cloned()
+            .collect();
         ConsistencyProof {
             proof,
             _marker: PhantomData,
         }
     }
+}
+
+fn indices_for_consistency_proof(num_tree_leaves: usize, slice_size: usize) -> Vec<InternalIdx> {
+    if slice_size == 0 {
+        panic!("cannot produce a consistency proof starting from an empty tree");
+    }
+    if slice_size > num_tree_leaves {
+        panic!("proposed slice is greater than the tree itself");
+    }
+
+    let mut out = Vec::new();
+
+    let num_oldtree_leaves = slice_size;
+    let tree_root_idx = root_idx(num_tree_leaves);
+    let oldtree_root_idx = root_idx(num_oldtree_leaves);
+    let starting_idx: InternalIdx = LeafIdx::new(slice_size - 1).into();
+
+    // We have starting_idx in a current tree and a old tree. starting_idx occurs in a subtree
+    // which is both a subtree of the current tree and of the old tree.
+    // We want to find the largest such subtree, and start logging the copath after that.
+
+    // We have a special case when the old tree is a subtree of the current tree. This happens
+    // when the old tree is a complete binary tree OR when the old tree equals this tree (i.e.,
+    // nothing changed between the trees).
+    let oldtree_is_subtree = slice_size.is_power_of_two() || slice_size == num_tree_leaves;
+
+    // If the old tree is a subtree, then the starting idx for the path is the subtree root
+    let mut path_idx = if oldtree_is_subtree {
+        oldtree_root_idx
+    } else {
+        // If the old tree isn't a subtree, find the first place that the ancestors of the
+        // starting index diverge
+        let ancestor_in_tree =
+            last_common_ancestor(starting_idx, num_tree_leaves, num_oldtree_leaves);
+        // Record the point just before divergences
+        out.push(ancestor_in_tree);
+
+        ancestor_in_tree
+    };
+
+    // Now collect the copath, just like in the inclusion proof
+    while path_idx != tree_root_idx {
+        let sibling_idx = path_idx.sibling(num_tree_leaves);
+        out.push(sibling_idx);
+
+        // Go up a level
+        path_idx = path_idx.parent(num_tree_leaves);
+    }
+
+    out
 }
 
 impl<H: Digest> RootHash<H> {
@@ -211,8 +221,6 @@ fn last_common_ancestor(
 pub(crate) mod test {
     use crate::merkle_tree::test::{rand_tree, rand_val};
 
-    use alloc::format;
-
     // Tests that an honestly generated consistency proof verifies
     #[test]
     fn consistency_proof_correctness() {
@@ -234,11 +242,13 @@ pub(crate) mod test {
                 let proof = t.prove_consistency(initial_size);
                 new_root
                     .verify_consistency(&initial_root, &proof)
-                    .expect(&format!(
-                        "Consistency check failed for {} -> {} leaves",
-                        initial_size,
-                        initial_size + num_to_add
-                    ));
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "Consistency check failed for {} -> {} leaves",
+                            initial_size,
+                            initial_size + num_to_add
+                        )
+                    });
 
                 // Do a round trip and check that the byte representations match at the end
                 let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
