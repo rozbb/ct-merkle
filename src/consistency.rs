@@ -3,7 +3,7 @@
 use crate::{
     error::ConsistencyVerifError,
     leaf::CanonicalSerialize,
-    merkle_tree::{parent_hash, MemoryBackedTree, RootHash},
+    mem_backed_tree::{parent_hash, MemoryBackedTree, RootHash},
     tree_math::*,
 };
 
@@ -217,7 +217,7 @@ fn last_common_ancestor(mut idx: InternalIdx, num_leaves1: u64, num_leaves2: u64
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::merkle_tree::test::{rand_tree, rand_val};
+    use crate::mem_backed_tree::test::{rand_tree, rand_val};
 
     // Tests that an honestly generated consistency proof verifies
     #[test]

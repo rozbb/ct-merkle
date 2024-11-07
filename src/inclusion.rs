@@ -3,7 +3,7 @@
 use crate::{
     error::InclusionVerifError,
     leaf::{leaf_hash, CanonicalSerialize},
-    merkle_tree::{parent_hash, MemoryBackedTree, RootHash},
+    mem_backed_tree::{parent_hash, MemoryBackedTree, RootHash},
     tree_math::*,
 };
 
@@ -192,7 +192,7 @@ impl<H: Digest> RootHash<H> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::merkle_tree::test::rand_tree;
+    use crate::mem_backed_tree::test::rand_tree;
 
     // Tests that an honestly generated inclusion proof verifies
     #[test]
