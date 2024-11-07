@@ -318,7 +318,7 @@ pub(crate) mod test {
     use super::*;
     use crate::test_util::{Hash, Leaf};
 
-    use rand::RngCore;
+    use rand::{Rng, RngCore};
 
     // Creates a random T
     pub(crate) fn rand_val<R: RngCore>(mut rng: R) -> Leaf {
@@ -340,15 +340,15 @@ pub(crate) mod test {
         t
     }
 
-    // A nice not-round number. This will prodce a tree with multiple levels
-    const NUM_ITEMS: usize = 230;
-
     // Adds a bunch of elements to the tree and then tests the tree's well-formedness
     #[test]
     fn self_check() {
         let mut rng = rand::thread_rng();
-        let t = rand_tree(&mut rng, 2);
-        t.self_check().expect("self check failed");
+        for _ in 0..100 {
+            let num_items = rng.gen_range(0..230);
+            let tree = rand_tree(&mut rng, num_items);
+            tree.self_check().expect("self check failed");
+        }
     }
 
     // Checks that a serialization round trip doesn't affect trees or roots
@@ -356,18 +356,22 @@ pub(crate) mod test {
     #[test]
     fn ser_deser() {
         let mut rng = rand::thread_rng();
-        let tree = rand_tree(&mut rng, NUM_ITEMS);
 
-        // Serialize and deserialize the tree
-        let roundtrip_tree = crate::test_util::serde_roundtrip(tree.clone());
+        for _ in 0..100 {
+            let num_items = rng.gen_range(0..230);
+            let tree = rand_tree(&mut rng, num_items);
 
-        // Run a self-check and ensure the root hasn't changed
-        roundtrip_tree.self_check().unwrap();
-        assert_eq!(tree.root(), roundtrip_tree.root());
+            // Serialize and deserialize the tree
+            let roundtrip_tree = crate::test_util::serde_roundtrip(tree.clone());
 
-        // Now check that a serialization round trip doesn't affect roots
-        let root = tree.root();
-        let roundtrip_root = crate::test_util::serde_roundtrip(root.clone());
-        assert_eq!(root, roundtrip_root);
+            // Run a self-check and ensure the root hasn't changed
+            roundtrip_tree.self_check().unwrap();
+            assert_eq!(tree.root(), roundtrip_tree.root());
+
+            // Now check that a serialization round trip doesn't affect roots
+            let root = tree.root();
+            let roundtrip_root = crate::test_util::serde_roundtrip(root.clone());
+            assert_eq!(root, roundtrip_root);
+        }
     }
 }
