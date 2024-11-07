@@ -12,11 +12,6 @@ impl LeafIdx {
         LeafIdx(idx)
     }
 
-    /// Returns this index as a `u64`
-    pub(crate) fn as_u64(&self) -> u64 {
-        self.0
-    }
-
     /// Returns this index as a `usize`
     pub(crate) fn as_usize(&self) -> Option<usize> {
         self.0.try_into().ok()
