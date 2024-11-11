@@ -108,7 +108,7 @@ where
 ///
 /// # Panics
 /// Panics when `num_leaves` is zero.
-fn indices_for_inclusion_proof(num_leaves: u64, idx: u64) -> Vec<u64> {
+pub fn indices_for_inclusion_proof(num_leaves: u64, idx: u64) -> Vec<u64> {
     if num_leaves == 0 {
         panic!("cannot create an inclusion proof for an empty tree")
     }

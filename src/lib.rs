@@ -15,6 +15,7 @@ mod tree_math;
 #[cfg(test)]
 mod test_util;
 
+pub use consistency::*;
 pub use inclusion::*;
 pub use leaf::*;
 pub use mem_backed_tree::*;

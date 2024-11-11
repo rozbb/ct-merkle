@@ -74,7 +74,7 @@ where
     }
 }
 
-fn indices_for_consistency_proof(num_tree_leaves: u64, slice_size: u64) -> Vec<u64> {
+pub fn indices_for_consistency_proof(num_tree_leaves: u64, slice_size: u64) -> Vec<u64> {
     if slice_size == 0 {
         panic!("cannot produce a consistency proof starting from an empty tree");
     }
