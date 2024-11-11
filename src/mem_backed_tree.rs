@@ -52,8 +52,8 @@ impl fmt::Display for SelfCheckError {
 #[cfg(feature = "std")]
 impl std::error::Error for SelfCheckError {}
 
-/// An in-memory Merkle tree implementation, supporting inclusion and consistency proofs. This
-/// stores leaf values, not just leaf hashes.
+/// An in-memory append-only Merkle tree implementation, supporting inclusion and consistency
+/// proofs. This stores leaf values, not just leaf hashes.
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct MemoryBackedTree<H, T>

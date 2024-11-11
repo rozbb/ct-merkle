@@ -10,11 +10,7 @@ use core::marker::PhantomData;
 use digest::{typenum::Unsigned, Digest};
 use subtle::ConstantTimeEq;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-
 /// A proof that a value appears in a Merkle tree
-#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InclusionProof<H: Digest> {
     proof: Vec<u8>,
@@ -211,10 +207,6 @@ pub(crate) mod test {
             // Now check the proof
             let root = t.root();
             root.verify_inclusion(&elem, idx as u64, &proof).unwrap();
-
-            // Do a round trip and check that the byte representations match at the end
-            let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
-            assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
         }
     }
 }

@@ -10,12 +10,8 @@ use core::marker::PhantomData;
 use digest::{typenum::Unsigned, Digest};
 use subtle::ConstantTimeEq;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-
 /// A proof that one Merkle tree is a prefix of another. In other words, tree #2 is the result of
 /// appending some number of items to the end of tree #1.
-#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct ConsistencyProof<H: Digest> {
     proof: Vec<u8>,
@@ -268,10 +264,6 @@ pub(crate) mod test {
                             initial_size + num_to_add
                         )
                     });
-
-                // Do a round trip and check that the byte representations match at the end
-                let roundtrip_proof = crate::test_util::serde_roundtrip(proof.clone());
-                assert_eq!(proof.as_bytes(), roundtrip_proof.as_bytes());
             }
         }
     }
