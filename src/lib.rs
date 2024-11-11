@@ -5,11 +5,12 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+pub use digest;
+
 mod consistency;
 mod error;
 mod inclusion;
-mod leaf;
-mod mem_backed_tree;
+pub mod mem_backed_tree;
 mod tree_math;
 
 #[cfg(test)]
@@ -18,5 +19,57 @@ mod test_util;
 pub use consistency::*;
 pub use error::*;
 pub use inclusion::*;
-pub use leaf::*;
-pub use mem_backed_tree::*;
+
+use digest::Digest;
+use subtle::ConstantTimeEq;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+
+/// The root hash of a Merkle tree. This uniquely represents the tree.
+#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
+#[derive(Clone, Debug)]
+pub struct RootHash<H: Digest> {
+    /// The root hash of the Merkle tree that this root represents
+    // The serde bounds are "" here because every digest::Output is Serializable and
+    // Deserializable, with no extra assumptions necessary
+    #[cfg_attr(feature = "serde", serde(bound(deserialize = "", serialize = "")))]
+    pub(crate) root_hash: digest::Output<H>,
+
+    /// The number of leaves in the Merkle tree that this root represents. That is, the number of
+    /// items inserted into the [`CtMerkleTree`] that created with `RootHash`.
+    pub(crate) num_leaves: u64,
+}
+
+impl<H: Digest> PartialEq for RootHash<H> {
+    /// Compares this `RootHash` to another in constant time.
+    fn eq(&self, other: &RootHash<H>) -> bool {
+        self.root_hash.ct_eq(&other.root_hash).into()
+    }
+}
+
+impl<H: Digest> Eq for RootHash<H> {}
+
+impl<H: Digest> RootHash<H> {
+    /// Constructs a `RootHash` from the given hash digest and the number of leaves in the tree
+    /// that created it.
+    pub fn new(digest: digest::Output<H>, num_leaves: u64) -> RootHash<H> {
+        RootHash {
+            root_hash: digest,
+            num_leaves,
+        }
+    }
+
+    /// Returns the Merkle Tree Hash of the tree that created this `RootHash`.
+    ///
+    /// This is precisely the Merkle Tree Hash (MTH) of the tree that created it, as defined in [RFC
+    /// 6962 §2.1](https://www.rfc-editor.org/rfc/rfc6962.html#section-2.1).
+    pub fn as_bytes(&self) -> &digest::Output<H> {
+        &self.root_hash
+    }
+
+    /// Returns the number of leaves in the tree that created this `RootHash`.
+    pub fn num_leaves(&self) -> u64 {
+        self.num_leaves
+    }
+}

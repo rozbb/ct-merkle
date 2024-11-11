@@ -1,7 +1,7 @@
 //! This file copies the known-answer tests from the transparency-dev/merkle project. Vectors from
 //! https://github.com/transparency-dev/merkle/blob/e739733c8ca2b89cfc49f35b161e81e16b5957d7/testonly/reference_test.go
 
-use ct_merkle::MemoryBackedTree;
+use ct_merkle::mem_backed_tree::MemoryBackedTree;
 use sha2::Sha256;
 
 /// An inclusion test vector specifies the size of the tree, the index whose inclusion is being

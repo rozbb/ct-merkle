@@ -49,52 +49,8 @@ impl fmt::Display for ConsistencyVerifError {
     }
 }
 
-/// An error representing what went wrong when running `MemoryBackedTree::self_check`.
-#[derive(Debug)]
-pub enum SelfCheckError {
-    /// The node at the given index is missing
-    MissingNode(u64),
-
-    /// The node at the given index has the wrong hash
-    IncorrectHash(u64),
-
-    /// The number of internal nodes in this struct exceeds the number of nodes that a tree with
-    /// this many leaves would hold.
-    TooManyInternalNodes,
-
-    /// There are so many leaves that the full tree could not possibly fit in memory
-    TooManyLeaves,
-}
-
-impl fmt::Display for SelfCheckError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            SelfCheckError::MissingNode(idx) => write!(f, "the node at index {} is missing", idx),
-            SelfCheckError::IncorrectHash(idx) => {
-                write!(f, "the node at index {} has the wrong hash", idx)
-            }
-            SelfCheckError::TooManyInternalNodes => {
-                write!(
-                    f,
-                    "the number of internal nodes in this struct exceedsc the number of nodes \
-                    that a tree with this many leaves would hold"
-                )
-            }
-            SelfCheckError::TooManyLeaves => {
-                write!(
-                    f,
-                    "there are so many leaves that the full tree could not possibly fit in memory"
-                )
-            }
-        }
-    }
-}
-
 #[cfg(feature = "std")]
 impl std::error::Error for InclusionVerifError {}
 
 #[cfg(feature = "std")]
 impl std::error::Error for ConsistencyVerifError {}
-
-#[cfg(feature = "std")]
-impl std::error::Error for SelfCheckError {}

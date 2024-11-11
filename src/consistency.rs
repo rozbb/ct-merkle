@@ -2,9 +2,10 @@
 
 use crate::{
     error::ConsistencyVerifError,
-    leaf::CanonicalSerialize,
-    mem_backed_tree::{parent_hash, MemoryBackedTree, RootHash},
+    mem_backed_tree::HashableLeaf,
+    mem_backed_tree::{parent_hash, MemoryBackedTree},
     tree_math::*,
+    RootHash,
 };
 
 use alloc::vec::Vec;
@@ -67,7 +68,7 @@ impl<H: Digest> ConsistencyProof<H> {
 impl<H, T> MemoryBackedTree<H, T>
 where
     H: Digest,
-    T: CanonicalSerialize,
+    T: HashableLeaf,
 {
     /// Produces a proof that this `MemoryBackedTree` is the result of appending to the tree containing
     /// the same first `slice_size` items.

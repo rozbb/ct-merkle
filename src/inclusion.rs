@@ -2,9 +2,9 @@
 
 use crate::{
     error::InclusionVerifError,
-    leaf::{leaf_hash, CanonicalSerialize},
-    mem_backed_tree::{parent_hash, MemoryBackedTree, RootHash},
+    mem_backed_tree::{leaf_hash, parent_hash, HashableLeaf, MemoryBackedTree},
     tree_math::*,
+    RootHash,
 };
 
 use alloc::vec::Vec;
@@ -82,7 +82,7 @@ impl<H: Digest> InclusionProof<H> {
 impl<H, T> MemoryBackedTree<H, T>
 where
     H: Digest,
-    T: CanonicalSerialize,
+    T: HashableLeaf,
 {
     /// Returns a proof of inclusion of the item at the given index.
     ///
@@ -146,7 +146,7 @@ pub fn indices_for_inclusion_proof(num_leaves: u64, idx: u64) -> Vec<u64> {
 
 impl<H: Digest> RootHash<H> {
     /// Verifies that `val` occurs at index `idx` in the tree described by this `RootHash`.
-    pub fn verify_inclusion<T: CanonicalSerialize>(
+    pub fn verify_inclusion<T: HashableLeaf>(
         &self,
         val: &T,
         idx: u64,

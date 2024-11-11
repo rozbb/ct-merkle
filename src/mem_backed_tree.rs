@@ -1,19 +1,62 @@
-use crate::{
-    error::SelfCheckError,
-    leaf::{leaf_hash, CanonicalSerialize},
-    tree_math::*,
-};
+use crate::{tree_math::*, RootHash};
 
 use alloc::vec::Vec;
+use core::fmt;
 
 use digest::Digest;
-use subtle::ConstantTimeEq;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
+/// The domain separator used for calculating leaf hashes
+const LEAF_HASH_PREFIX: &[u8] = &[0x00];
+
 /// The domain separator used for calculating parent hashes
 const PARENT_HASH_PREFIX: &[u8] = &[0x01];
+
+/// An error representing what went wrong when running `MemoryBackedTree::self_check`.
+#[derive(Debug)]
+pub enum SelfCheckError {
+    /// The node at the given index is missing
+    MissingNode(u64),
+
+    /// The node at the given index has the wrong hash
+    IncorrectHash(u64),
+
+    /// The number of internal nodes in this struct exceeds the number of nodes that a tree with
+    /// this many leaves would hold.
+    TooManyInternalNodes,
+
+    /// There are so many leaves that the full tree could not possibly fit in memory
+    TooManyLeaves,
+}
+
+impl fmt::Display for SelfCheckError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self {
+            SelfCheckError::MissingNode(idx) => write!(f, "the node at index {} is missing", idx),
+            SelfCheckError::IncorrectHash(idx) => {
+                write!(f, "the node at index {} has the wrong hash", idx)
+            }
+            SelfCheckError::TooManyInternalNodes => {
+                write!(
+                    f,
+                    "the number of internal nodes in this struct exceedsc the number of nodes \
+                    that a tree with this many leaves would hold"
+                )
+            }
+            SelfCheckError::TooManyLeaves => {
+                write!(
+                    f,
+                    "there are so many leaves that the full tree could not possibly fit in memory"
+                )
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for SelfCheckError {}
 
 /// An in-memory Merkle tree implementation, supporting inclusion and consistency proofs. This
 /// stores leaf values, not just leaf hashes.
@@ -22,7 +65,7 @@ const PARENT_HASH_PREFIX: &[u8] = &[0x01];
 pub struct MemoryBackedTree<H, T>
 where
     H: Digest,
-    T: CanonicalSerialize,
+    T: HashableLeaf,
 {
     /// The leaves of this tree. This contains all the items
     pub(crate) leaves: Vec<T>,
@@ -37,7 +80,7 @@ where
 impl<H, T> Default for MemoryBackedTree<H, T>
 where
     H: Digest,
-    T: CanonicalSerialize,
+    T: HashableLeaf,
 {
     fn default() -> Self {
         MemoryBackedTree {
@@ -47,58 +90,10 @@ where
     }
 }
 
-/// The root hash of a Merkle tree. This uniquely represents the tree.
-#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
-#[derive(Clone, Debug)]
-pub struct RootHash<H: Digest> {
-    /// The root hash of the Merkle tree that this root represents
-    // The serde bounds are "" here because every digest::Output is Serializable and
-    // Deserializable, with no extra assumptions necessary
-    #[cfg_attr(feature = "serde", serde(bound(deserialize = "", serialize = "")))]
-    pub(crate) root_hash: digest::Output<H>,
-
-    /// The number of leaves in the Merkle tree that this root represents. That is, the number of
-    /// items inserted into the [`CtMerkleTree`] that created with `RootHash`.
-    pub(crate) num_leaves: u64,
-}
-
-impl<H: Digest> PartialEq for RootHash<H> {
-    /// Compares this `RootHash` to another in constant time.
-    fn eq(&self, other: &RootHash<H>) -> bool {
-        self.root_hash.ct_eq(&other.root_hash).into()
-    }
-}
-
-impl<H: Digest> Eq for RootHash<H> {}
-
-impl<H: Digest> RootHash<H> {
-    /// Constructs a `RootHash` from the given hash digest and the number of leaves in the tree
-    /// that created it.
-    pub fn new(digest: digest::Output<H>, num_leaves: u64) -> RootHash<H> {
-        RootHash {
-            root_hash: digest,
-            num_leaves,
-        }
-    }
-
-    /// Returns the Merkle Tree Hash of the tree that created this `RootHash`.
-    ///
-    /// This is precisely the Merkle Tree Hash (MTH) of the tree that created it, as defined in [RFC
-    /// 6962 §2.1](https://www.rfc-editor.org/rfc/rfc6962.html#section-2.1).
-    pub fn as_bytes(&self) -> &digest::Output<H> {
-        &self.root_hash
-    }
-
-    /// Returns the number of leaves in the tree that created this `RootHash`.
-    pub fn num_leaves(&self) -> u64 {
-        self.num_leaves
-    }
-}
-
 impl<H, T> MemoryBackedTree<H, T>
 where
     H: Digest,
-    T: CanonicalSerialize,
+    T: HashableLeaf,
 {
     pub fn new() -> Self {
         Self::default()
@@ -300,6 +295,52 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+}
+
+/// A trait impl'd by types that have a canonical byte representation. This must be implemented by
+/// any type you want to insert into a `MemoryBackedTree`.
+
+/// Represents any leaf that can be included in a Merkle tree. This only requires that the leaf have
+/// a unique hash representation.
+pub trait HashableLeaf {
+    fn hash<H: digest::Update>(&self, hasher: &mut H);
+}
+
+// Blanket hasher impl for anything that resembles a bag of bytes
+impl<T: AsRef<[u8]>> HashableLeaf for T {
+    fn hash<H: digest::Update>(&self, hasher: &mut H) {
+        hasher.update(self.as_ref())
+    }
+}
+
+/// A hasher that prepends the leaf-hash prefix
+struct LeafHasher<H: Digest>(H);
+
+impl<H: Digest> LeafHasher<H> {
+    fn new() -> Self {
+        LeafHasher(H::new_with_prefix(LEAF_HASH_PREFIX))
+    }
+
+    fn finalize(self) -> digest::Output<H> {
+        self.0.finalize()
+    }
+}
+
+impl<H: Digest> digest::Update for LeafHasher<H> {
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data)
+    }
+}
+
+/// Computes the hash of the given leaf's canonical byte representation
+pub(crate) fn leaf_hash<H, L>(leaf: &L) -> digest::Output<H>
+where
+    H: Digest,
+    L: HashableLeaf,
+{
+    let mut hasher = LeafHasher::<H>::new();
+    leaf.hash(&mut hasher);
+    hasher.finalize()
 }
 
 /// Computes the parent of the two given subtrees. This is `H(0x01 || left || right)`.
