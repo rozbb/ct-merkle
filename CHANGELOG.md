@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removals
 
 * Removed `SimpleWriter` trait in favor of the pre-existing `digest::Update`
+* Removed `serde` trait impls from `InclusionProof` and `ConsistencyProof`
 
 ### Changes
 
