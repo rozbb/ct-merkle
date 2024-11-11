@@ -1,11 +1,7 @@
 //! Types and traits for Merkle consistency proofs
 
 use crate::{
-    error::ConsistencyVerifError,
-    mem_backed_tree::HashableLeaf,
-    mem_backed_tree::{parent_hash, MemoryBackedTree},
-    tree_math::*,
-    RootHash,
+    error::ConsistencyVerifError, mem_backed_tree::MemoryBackedTree, tree_util::*, RootHash,
 };
 
 use alloc::vec::Vec;

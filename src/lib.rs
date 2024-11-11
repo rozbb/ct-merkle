@@ -11,7 +11,7 @@ mod consistency;
 mod error;
 mod inclusion;
 pub mod mem_backed_tree;
-mod tree_math;
+mod tree_util;
 
 #[cfg(test)]
 mod test_util;
@@ -19,6 +19,7 @@ mod test_util;
 pub use consistency::*;
 pub use error::*;
 pub use inclusion::*;
+pub use tree_util::*;
 
 use digest::Digest;
 use subtle::ConstantTimeEq;

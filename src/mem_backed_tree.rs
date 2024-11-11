@@ -1,4 +1,4 @@
-use crate::{tree_math::*, RootHash};
+use crate::{tree_util::*, RootHash};
 
 use alloc::vec::Vec;
 use core::fmt;
@@ -7,12 +7,6 @@ use digest::Digest;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-
-/// The domain separator used for calculating leaf hashes
-const LEAF_HASH_PREFIX: &[u8] = &[0x00];
-
-/// The domain separator used for calculating parent hashes
-const PARENT_HASH_PREFIX: &[u8] = &[0x01];
 
 /// An error representing what went wrong when running `MemoryBackedTree::self_check`.
 #[derive(Debug)]
@@ -295,63 +289,6 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-}
-
-/// A trait impl'd by types that have a canonical byte representation. This must be implemented by
-/// any type you want to insert into a `MemoryBackedTree`.
-
-/// Represents any leaf that can be included in a Merkle tree. This only requires that the leaf have
-/// a unique hash representation.
-pub trait HashableLeaf {
-    fn hash<H: digest::Update>(&self, hasher: &mut H);
-}
-
-// Blanket hasher impl for anything that resembles a bag of bytes
-impl<T: AsRef<[u8]>> HashableLeaf for T {
-    fn hash<H: digest::Update>(&self, hasher: &mut H) {
-        hasher.update(self.as_ref())
-    }
-}
-
-/// A hasher that prepends the leaf-hash prefix
-struct LeafHasher<H: Digest>(H);
-
-impl<H: Digest> LeafHasher<H> {
-    fn new() -> Self {
-        LeafHasher(H::new_with_prefix(LEAF_HASH_PREFIX))
-    }
-
-    fn finalize(self) -> digest::Output<H> {
-        self.0.finalize()
-    }
-}
-
-impl<H: Digest> digest::Update for LeafHasher<H> {
-    fn update(&mut self, data: &[u8]) {
-        self.0.update(data)
-    }
-}
-
-/// Computes the hash of the given leaf's canonical byte representation
-pub(crate) fn leaf_hash<H, L>(leaf: &L) -> digest::Output<H>
-where
-    H: Digest,
-    L: HashableLeaf,
-{
-    let mut hasher = LeafHasher::<H>::new();
-    leaf.hash(&mut hasher);
-    hasher.finalize()
-}
-
-/// Computes the parent of the two given subtrees. This is `H(0x01 || left || right)`.
-pub(crate) fn parent_hash<H: Digest>(
-    left: &digest::Output<H>,
-    right: &digest::Output<H>,
-) -> digest::Output<H> {
-    let mut hasher = H::new_with_prefix(PARENT_HASH_PREFIX);
-    hasher.update(left);
-    hasher.update(right);
-    hasher.finalize()
 }
 
 #[cfg(test)]

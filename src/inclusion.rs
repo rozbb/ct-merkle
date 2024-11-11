@@ -1,10 +1,7 @@
 //! Types and traits for inclusion proofs, a.k.a., Merkle Audit Paths
 
 use crate::{
-    error::InclusionVerifError,
-    mem_backed_tree::{leaf_hash, parent_hash, HashableLeaf, MemoryBackedTree},
-    tree_math::*,
-    RootHash,
+    error::InclusionVerifError, mem_backed_tree::MemoryBackedTree, tree_util::*, RootHash,
 };
 
 use alloc::vec::Vec;
