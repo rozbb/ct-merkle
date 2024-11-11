@@ -16,8 +16,7 @@ use subtle::ConstantTimeEq;
 #[cfg(feature = "serde")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
-/// A proof that a value appears in a [`CtMerkleTree`]. The byte representation of a
-/// [`InclusionProof`] is identical to that of `PATH(m, D[n])` described in RFC 6962 §2.1.1.
+/// A proof that a value appears in a Merkle tree
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InclusionProof<H: Digest> {
@@ -26,7 +25,11 @@ pub struct InclusionProof<H: Digest> {
 }
 
 impl<H: Digest> InclusionProof<H> {
-    /// Returns the RFC 6962-compatible byte representation of this inclusion proof
+    /// Returns the byte representation of this inclusion proof.
+    ///
+    /// This is precisely `PATH(m, D[n])`, described in [RFC 6962
+    /// §2.1.1](https://www.rfc-editor.org/rfc/rfc6962.html#section-2.1.1), where `n` is the number
+    /// of leaves and `m` is the leaf index being proved.
     pub fn as_bytes(&self) -> &[u8] {
         self.proof.as_slice()
     }
@@ -102,9 +105,11 @@ where
 }
 
 /// Given a tree size and index, produces a list of tree node indices whose values we need in order
-/// to build the inclusion proof. This is useful when we don't have the entire tree in memory, e.g.,
-/// when it is stored on disk or stored in tiles on a remote server. Once the digests are retreived,
-/// they can be used in the same order in [`InclusionProof::from_digests`].
+/// to build the inclusion proof.
+///
+/// This is useful when we don't have the entire tree in memory, e.g., when it is stored on disk or
+/// stored in tiles on a remote server. Once the digests are retreived, they can be used in the same
+/// order in [`InclusionProof::from_digests`].
 ///
 /// # Panics
 /// Panics when `num_leaves` is zero.

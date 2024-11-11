@@ -8,7 +8,8 @@ const LEAF_HASH_PREFIX: &[u8] = &[0x00];
 // The only reason this trait is defined is so that users don't have direct access to the hash
 // function being used. To keep things simple, we abstract the hasher in `LeafHasher` as a
 // `SimpleWriter`.
-/// A very small subset of `std::io::Write`. All this does is unconditionally accept bytes.
+/// Helper trait for [`CanonicalSerialize`], defining a way to incrementally write bytes. End users
+/// do not need to impl this.
 pub trait SimpleWriter {
     fn write(&mut self, buf: &[u8]);
 }
@@ -19,8 +20,8 @@ impl<W: SimpleWriter + ?Sized> SimpleWriter for &mut W {
     }
 }
 
-/// A trait impl'd by types that have a canonical byte representation. This MUST be implemented by
-/// any type you want to insert into a [`CtMerkleTree`](crate::merkle_tree::CtMerkleTree).
+/// A trait impl'd by types that have a canonical byte representation. This must be implemented by
+/// any type you want to insert into a `MemoryBackedTree`.
 pub trait CanonicalSerialize {
     fn serialize<W: SimpleWriter>(&self, writer: W);
 }

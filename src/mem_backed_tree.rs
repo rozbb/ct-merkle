@@ -15,9 +15,8 @@ use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 /// The domain separator used for calculating parent hashes
 const PARENT_HASH_PREFIX: &[u8] = &[0x01];
 
-/// An append-only data structure with support for succinct inclusion proofs and consistency
-/// proofs. This is implemented as a Merkle tree with methods and byte representations compatible
-/// Certificate Transparency logs (RFC 6962).
+/// An in-memory Merkle tree implementation, supporting inclusion and consistency proofs. This
+/// stores leaf values, not just leaf hashes.
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct MemoryBackedTree<H, T>
@@ -48,9 +47,7 @@ where
     }
 }
 
-/// The root hash of a [`CtMerkleTree`]. This uniquely represents the tree. The [`Self::as_bytes`]
-/// representation of this struct is equal to the Merkle Tree Hash (MTH) of the tree that created
-/// it, as defined in RFC 6962 §2.1.
+/// The root hash of a Merkle tree. This uniquely represents the tree.
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct RootHash<H: Digest> {
@@ -85,6 +82,9 @@ impl<H: Digest> RootHash<H> {
     }
 
     /// Returns the Merkle Tree Hash of the tree that created this `RootHash`.
+    ///
+    /// This is precisely the Merkle Tree Hash (MTH) of the tree that created it, as defined in [RFC
+    /// 6962 §2.1](https://www.rfc-editor.org/rfc/rfc6962.html#section-2.1).
     pub fn as_bytes(&self) -> &digest::Output<H> {
         &self.root_hash
     }

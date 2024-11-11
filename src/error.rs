@@ -49,8 +49,7 @@ impl fmt::Display for ConsistencyVerifError {
     }
 }
 
-/// An error returned during
-/// [`CtMerkleTree::self_check`](crate::merkle_tree::CtMerkleTree::self_check)
+/// An error representing what went wrong when running `MemoryBackedTree::self_check`.
 #[derive(Debug)]
 pub enum SelfCheckError {
     /// The node at the given index is missing
