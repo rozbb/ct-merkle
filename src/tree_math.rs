@@ -1,9 +1,12 @@
 // We make opaque types for leaf and internal node indices so that we don't accidentally confuse
 // them in the math
 
+/// An index to a leaf of the tree
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct LeafIdx(u64);
 
+/// An index to an "internal" node of the tree, i.e., a leaf hash or parent node. If there are N
+/// leaves, then there are 2*(N - 1) + 1 internal nodes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct InternalIdx(u64);
 
@@ -36,10 +39,10 @@ impl InternalIdx {
     }
 }
 
-///
-/// Below is tree math definitions. We use array-based trees, described in
-/// <https://www.ietf.org/archive/id/draft-ietf-mls-protocol-14.html#array-based-trees>
-///
+//
+// Below is tree math definitions. We use array-based trees, described in
+// https://www.rfc-editor.org/rfc/rfc9420.html#name-array-based-trees
+//
 
 impl From<LeafIdx> for InternalIdx {
     fn from(leaf: LeafIdx) -> InternalIdx {
@@ -118,7 +121,7 @@ fn log2(x: u64) -> u64 {
 
 /// The number of internal nodes necessary to represent a tree with `num_leaves` leaves.
 pub(crate) fn num_internal_nodes(num_leaves: u64) -> u64 {
-    if num_leaves < 2 {
+    if num_leaves == 0 {
         0
     } else {
         2 * (num_leaves - 1) + 1

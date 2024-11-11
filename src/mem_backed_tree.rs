@@ -344,7 +344,7 @@ pub(crate) mod test {
     #[test]
     fn self_check() {
         let mut rng = rand::thread_rng();
-        for _ in 0..100 {
+        for _ in 0..1000 {
             let num_items = rng.gen_range(0..230);
             let tree = rand_tree(&mut rng, num_items);
             tree.self_check().expect("self check failed");
