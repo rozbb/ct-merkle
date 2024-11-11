@@ -24,17 +24,10 @@ pub use tree_util::*;
 use digest::Digest;
 use subtle::ConstantTimeEq;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-
 /// The root hash of a Merkle tree. This uniquely represents the tree.
-#[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 #[derive(Clone, Debug)]
 pub struct RootHash<H: Digest> {
     /// The root hash of the Merkle tree that this root represents
-    // The serde bounds are "" here because every digest::Output is Serializable and
-    // Deserializable, with no extra assumptions necessary
-    #[cfg_attr(feature = "serde", serde(bound(deserialize = "", serialize = "")))]
     pub(crate) root_hash: digest::Output<H>,
 
     /// The number of leaves in the Merkle tree that this root represents. That is, the number of
