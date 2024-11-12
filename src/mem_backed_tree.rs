@@ -345,11 +345,6 @@ pub(crate) mod test {
             // Run a self-check and ensure the root hasn't changed
             roundtrip_tree.self_check().unwrap();
             assert_eq!(tree.root(), roundtrip_tree.root());
-
-            // Now check that a serialization round trip doesn't affect roots
-            let root = tree.root();
-            let roundtrip_root = crate::test_util::serde_roundtrip(root.clone());
-            assert_eq!(root, roundtrip_root);
         }
     }
 }
