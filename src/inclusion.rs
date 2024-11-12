@@ -105,10 +105,13 @@ where
 /// order in [`InclusionProof::from_digests`].
 ///
 /// # Panics
-/// Panics when `num_leaves` is zero.
+/// Panics if `num_leaves == 0` or if `idx >= num_leaves`.
 pub fn indices_for_inclusion_proof(num_leaves: u64, idx: u64) -> Vec<u64> {
     if num_leaves == 0 {
         panic!("cannot create an inclusion proof for an empty tree")
+    }
+    if idx >= num_leaves {
+        panic!("cannot create an inclusion proof for an index that's not in the tree")
     }
 
     let mut out = Vec::new();

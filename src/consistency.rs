@@ -30,8 +30,9 @@ impl<H: Digest> ConsistencyProof<H> {
 
     /// Constructs a `ConsistencyProof` from the given bytes.
     ///
-    /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
-    /// is not a concatenated sequence of hash digests.
+    /// # Panics
+    /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is
+    /// not a concatenated sequence of hash digests.
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         if bytes.len() % H::OutputSize::USIZE != 0 {
             panic!("malformed consistency proof");
@@ -65,6 +66,7 @@ where
     /// Produces a proof that this `MemoryBackedTree` is the result of appending to the tree containing
     /// the same first `slice_size` items.
     ///
+    /// # Panics
     /// Panics if `slice_size == 0` or `slice_size > self.len()`.
     pub fn prove_consistency(&self, slice_size: usize) -> ConsistencyProof<H> {
         let num_leaves = self.len();
@@ -91,8 +93,11 @@ where
 /// order in [`ConsistencyProof::from_digests`].
 ///
 /// # Panics
-/// Panics when `num_leaves` is zero.
+/// Panics if `num_leaves == 0`, if `slice_size == 0`, or if `slice_size > num_leaves`.
 pub fn indices_for_consistency_proof(num_leaves: u64, slice_size: u64) -> Vec<u64> {
+    if num_leaves == 0 {
+        panic!("cannot produce a consistency proof for an empty tree");
+    }
     if slice_size == 0 {
         panic!("cannot produce a consistency proof starting from an empty tree");
     }
@@ -144,6 +149,7 @@ pub fn indices_for_consistency_proof(num_leaves: u64, slice_size: u64) -> Vec<u6
 impl<H: Digest> RootHash<H> {
     /// Verifies that the tree described by `old_root` is a prefix of the tree described by `self`.
     ///
+    /// # Panics
     /// Panics if `old_root.num_leaves() == 0` or `old_root.num_leaves() > self.num_leaves()`.
     pub fn verify_consistency(
         &self,
