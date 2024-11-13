@@ -240,7 +240,11 @@ fn last_common_ancestor(mut idx: InternalIdx, num_leaves1: u64, num_leaves2: u64
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::mem_backed_tree::test::{rand_tree, rand_val};
+    use crate::{
+        mem_backed_tree::test::{rand_tree, rand_val},
+        RootHash,
+    };
+    use sha2::Sha256;
 
     // Tests that an honestly generated consistency proof verifies
     #[test]
@@ -270,6 +274,13 @@ pub(crate) mod test {
                             initial_size + num_to_add
                         )
                     });
+
+                // Make a nonsense initial root. This should fail to verify
+                let modified_initial_root =
+                    RootHash::<Sha256>::new(initial_root.root_hash, (initial_size as u64) - 1);
+                assert!(new_root
+                    .verify_consistency(&modified_initial_root, &proof)
+                    .is_err())
             }
         }
     }

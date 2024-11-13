@@ -31,17 +31,17 @@ use subtle::ConstantTimeEq;
 #[derive(Clone, Debug)]
 pub struct RootHash<H: Digest> {
     /// The root hash of the Merkle tree that this root represents
-    pub(crate) root_hash: digest::Output<H>,
+    root_hash: digest::Output<H>,
 
     /// The number of leaves in the Merkle tree that this root represents. That is, the number of
     /// items inserted into the [`CtMerkleTree`] that created with `RootHash`.
-    pub(crate) num_leaves: u64,
+    num_leaves: u64,
 }
 
 impl<H: Digest> PartialEq for RootHash<H> {
     /// Compares this `RootHash` to another in constant time.
     fn eq(&self, other: &RootHash<H>) -> bool {
-        self.root_hash.ct_eq(&other.root_hash).into()
+        self.num_leaves == other.num_leaves() && self.root_hash.ct_eq(&other.root_hash).into()
     }
 }
 

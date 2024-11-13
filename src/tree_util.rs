@@ -29,7 +29,7 @@ impl LeafIdx {
     }
 }
 
-// I know I could just expose the underlying usize. But making it an opaque type with a
+// I know I could just expose the underlying u64. But making it an opaque type with a
 // constructor and a getter seems safer
 impl InternalIdx {
     pub(crate) fn new(idx: u64) -> Self {

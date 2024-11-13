@@ -120,7 +120,7 @@ where
         let new_leaf_idx = LeafIdx::new(num_leaves - 1);
         // recalculate_path() requires its leaf idx to be less than usize::MAX. This is guaranteed
         // because it's self.len() - 1.
-        self.recaluclate_path(new_leaf_idx)
+        self.recalculate_path(new_leaf_idx)
     }
 
     /// Checks that this tree is well-formed. This can take a while if the tree is large. Run this
@@ -151,10 +151,10 @@ where
             let expected_hash = leaf_hash::<H, _>(leaf);
             // We can unwrap() because we checked above that the number of nodes necessary for this
             // tree fits in memory
-            let stored_hash = match self.internal_nodes.get(leaf_hash_idx.as_usize().unwrap()) {
-                None => Err(SelfCheckError::MissingNode(leaf_hash_idx.as_u64())),
-                Some(h) => Ok(h),
-            }?;
+            let Some(stored_hash) = self.internal_nodes.get(leaf_hash_idx.as_usize().unwrap())
+            else {
+                return Err(SelfCheckError::MissingNode(leaf_hash_idx.as_u64()));
+            };
 
             // If the hashes don't match, that's an error
             if stored_hash != &expected_hash {
@@ -175,7 +175,7 @@ where
                 let left_child_idx = parent_idx.left_child();
                 let right_child_idx = parent_idx.right_child(num_leaves);
 
-                // We may unwrap the .as_usize() computations because we alreayd know from the check
+                // We may unwrap the .as_usize() computations because we already know from the check
                 // above that self.internal_nodes.len() == num_nodes, i.e., the total number of
                 // nodes in the tree fits in memory, and therefore all the indices are at most
                 // `usize::MAX`.
@@ -206,10 +206,12 @@ where
         Ok(())
     }
 
-    /// Recalculates the hashes on the path from `leaf_idx` to the root. Panics if the path doesn't
-    /// exist. In other words, this tree MUST NOT be missing internal nodes or leaves. Also panics
-    /// if the given leaf index exceeds `usize::MAX`.
-    fn recaluclate_path(&mut self, leaf_idx: LeafIdx) {
+    /// Recalculates the hashes on the path from `leaf_idx` to the root.
+    ///
+    /// # Panics
+    /// Panics if the path doesn't exist. In other words, this tree MUST NOT be missing internal
+    /// nodes or leaves. Also panics if the given leaf index exceeds `usize::MAX`.
+    fn recalculate_path(&mut self, leaf_idx: LeafIdx) {
         // First update the leaf hash
         let leaf = &self.leaves[leaf_idx.as_usize().unwrap()];
         let mut cur_idx: InternalIdx = leaf_idx.into();
