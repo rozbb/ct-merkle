@@ -77,8 +77,8 @@ where
             "num_additions must be smaller than self.len()"
         );
 
-        // This cannot panic because `num_leaves > num_additions`, and `num_leaves - 1 <= >
-        // ⌊u64::MAX / 2⌋` by the invariant on MemoryBackedTree
+        // This cannot panic because num_leaves > num_additions, and
+        // num_leaves <= ⌊u64::MAX / 2⌋ in any valid MemoryBackedTree
         let idxs = indices_for_consistency_proof(num_leaves - num_additions, num_additions);
         // We can unwrap() below because all the given indices are in the tree, which we are storing
         // in memory
@@ -184,7 +184,7 @@ impl<H: Digest> RootHash<H> {
         if num_oldtree_leaves > num_newtree_leaves {
             return Err(ConsistencyVerifError::OldTreeLarger);
         }
-        if num_newtree_leaves - 1 > u64::MAX / 2 {
+        if num_newtree_leaves > u64::MAX / 2 + 1 {
             return Err(ConsistencyVerifError::NewTreeTooBig);
         }
 
