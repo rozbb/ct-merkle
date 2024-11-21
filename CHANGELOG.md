@@ -20,3 +20,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Renamed the `CtMerkleTree` struct to `MemoryBackedTree`
 * Renamed the `CanonicalSerialize` trait to `HashableLeaf`
+* Changed argument to `MemoryBackedTree::prove_consistency` to be the number of additions, rather than the size of the prefix
+* Made all verification methods panic-free
