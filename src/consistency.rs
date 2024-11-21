@@ -164,6 +164,11 @@ pub fn indices_for_consistency_proof(num_oldtree_leaves: u64, num_additions: u64
 impl<H: Digest> RootHash<H> {
     /// Verifies a proof that the tree described by `old_root` is a prefix of the tree described by
     /// `self`.
+    ///
+    /// # Note
+    /// Verification success does NOT imply that the size of the tree that produced the proof equals
+    /// `self.num_leaves()`, or that the old tree size was `old_root.num_leaves()`. For any given
+    /// proof, there are multiple tree size combinations that could have produced it.
     pub fn verify_consistency(
         &self,
         old_root: &RootHash<H>,
