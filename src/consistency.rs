@@ -77,6 +77,8 @@ where
             "num_additions must be smaller than self.len()"
         );
 
+        // This cannot panic because `num_leaves > num_additions`, and `num_leaves - 1 <= >
+        // ⌊u64::MAX / 2⌋` by the invariant on MemoryBackedTree
         let idxs = indices_for_consistency_proof(num_leaves - num_additions, num_additions);
         // We can unwrap() below because all the given indices are in the tree, which we are storing
         // in memory
@@ -100,14 +102,14 @@ where
 /// order in [`ConsistencyProof::from_digests`].
 ///
 /// # Panics
-/// Panics if `num_oldtree_leaves == 0` `num_oldtree_leaves + num_additions - 1 > ⌊u64::MAX / 2⌋`.
+/// Panics if `num_oldtree_leaves == 0` or `num_oldtree_leaves + num_additions > ⌊u64::MAX / 2⌋ + 1`.
 pub fn indices_for_consistency_proof(num_oldtree_leaves: u64, num_additions: u64) -> Vec<u64> {
     if num_oldtree_leaves == 0 {
         panic!("cannot produce a consistency proof starting from an empty tree");
     }
-    if (num_oldtree_leaves - 1)
+    if num_oldtree_leaves
         .checked_add(num_additions)
-        .map_or(false, |s| s > u64::MAX / 2)
+        .map_or(false, |s| s > u64::MAX / 2 + 1)
     {
         panic!("too many leaves")
     }
@@ -163,7 +165,7 @@ pub fn indices_for_consistency_proof(num_oldtree_leaves: u64, num_additions: u64
 
 impl<H: Digest> RootHash<H> {
     /// Verifies a proof that the tree described by `old_root` is a prefix of the tree described by
-    /// `self`.
+    /// `self`. This does not panic.
     ///
     /// # Note
     /// Verification success does NOT imply that the size of the tree that produced the proof equals
@@ -285,11 +287,11 @@ impl<H: Digest> RootHash<H> {
 /// # Panics
 /// Panics when `num_leaves1 <= num_leaves2` or `num_leaves2 == 0`. Also panics when `num_leaves2` is
 /// a subtree of `num_leaves1`, which occurs when `num_leaves2.is_power_of_two()`. Also panics when
-/// `num_leaves1 - 1 > ⌊u64::MAX / 2⌋`.
+/// `num_leaves1 > ⌊u64::MAX / 2⌋ + 1`.
 fn first_node_with_diverging_parents(num_leaves1: u64, num_leaves2: u64) -> InternalIdx {
     assert!(num_leaves1 > num_leaves2);
     assert_ne!(num_leaves2, 0);
-    assert!(num_leaves1 - 1 <= u64::MAX / 2);
+    assert!(num_leaves1 <= u64::MAX / 2 + 1);
 
     let mut idx = InternalIdx::from(LeafIdx::new(num_leaves2 - 1));
     while idx.parent(num_leaves1) == idx.parent(num_leaves2) {
@@ -331,9 +333,10 @@ pub(crate) mod test {
                     .verify_consistency(&initial_root, &proof)
                     .unwrap_or_else(|e| {
                         panic!(
-                            "Consistency check failed for {} -> {} leaves: {e}",
+                            "Consistency check failed for {} -> {} leaves: {}",
                             initial_size,
-                            initial_size + num_to_add
+                            initial_size + num_to_add,
+                            e
                         )
                     });
 

@@ -1,6 +1,7 @@
 // The doc_cfg feature is only available in nightly. It lets us mark items in documentation as
 // dependent on specific features.
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![no_std]
 #![doc = include_str!("../README.md")]
 extern crate alloc;
 

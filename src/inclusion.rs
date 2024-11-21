@@ -144,7 +144,8 @@ pub fn indices_for_inclusion_proof(num_leaves: u64, idx: u64) -> Vec<u64> {
 }
 
 impl<H: Digest> RootHash<H> {
-    /// Verifies that `val` occurs at index `idx` in the tree described by this `RootHash`.
+    /// Verifies that `val` occurs at index `idx` in the tree described by this `RootHash`. This
+    /// does not panic.
     ///
     /// # Note
     /// Verification success does NOT imply that the size of the tree that produced the proof equals

@@ -205,7 +205,7 @@ fn log2(x: u64) -> u64 {
 /// The number of internal nodes necessary to represent a tree with `num_leaves` leaves.
 ///
 /// # Panics
-/// Panics when `num_leaves - 1 > ⌊u64::MAX / 2⌋`
+/// Panics when `num_leaves > ⌊u64::MAX / 2⌋ + 1`
 pub(crate) fn num_internal_nodes(num_leaves: u64) -> u64 {
     if num_leaves == 0 {
         0
@@ -217,7 +217,7 @@ pub(crate) fn num_internal_nodes(num_leaves: u64) -> u64 {
 /// Returns the root index of a tree with `num_leaves` leaves
 ///
 /// # Panics
-/// Panics when `num_leaves - 1 > ⌊u64::MAX / 2⌋`
+/// Panics when `num_leaves > ⌊u64::MAX / 2⌋ + 1`
 pub(crate) fn root_idx(num_leaves: u64) -> InternalIdx {
     let w = num_internal_nodes(num_leaves);
     InternalIdx((1 << log2(w)) - 1)

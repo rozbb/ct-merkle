@@ -96,14 +96,18 @@ where
     /// Appends the given item to the end of the list.
     ///
     /// # Panics
-    /// Panics if `self.len() > usize::MAX / 2`.
+    /// Panics if `self.len() > ⌊usize::MAX / 2⌋ - 1`. Also panics if this tree is malformed,
+    /// e.g., deserialized from disk without passing a [`MemoryBackedTree::self_check`].
     pub fn push(&mut self, new_val: T) {
         // Make sure we can push two elements to internal_nodes (two because every append involves
         // adding a parent node somewhere). usize::MAX is the max capacity of a vector, minus 1. So
-        // usize::MAX-1 is the correct bound to use here.
-        if self.internal_nodes.len() > usize::MAX - 1 {
-            panic!("cannot push; tree is full");
-        }
+        // usize::MAX-1 is the correct bound to use here. Equivalently, if l is a leaf, then 2l
+        // is the internal index of it. To represent the next two leaves, we need 2(self.len() + 1)
+        // <= usize::MAX, or self.len() + 1 <= usize::MAX / 2
+        assert!(
+            self.internal_nodes.len() < usize::MAX, // equivly, <= usize::MAX - 1
+            "cannot push; tree is full"
+        );
 
         // We push the new value, a node for its hash, and a node for its parent (assuming the tree
         // isn't a singleton). The hash and parent nodes will get overwritten by recalculate_path()
@@ -129,11 +133,12 @@ where
     pub fn self_check(&self) -> Result<(), SelfCheckError> {
         // If the number of leaves is more than an in-memory tree could support, return an error
         let num_leaves = self.len();
-        if num_leaves > (usize::MAX / 2) as u64 {
+        if num_leaves > (usize::MAX / 2) as u64 + 1 {
             return Err(SelfCheckError::TooManyLeaves);
         }
 
         // If the number of internal nodes is less than the necessary size of the tree, return an error
+        // This cannot panic because we checked that num_leaves isn't too big above
         let num_nodes = num_internal_nodes(num_leaves);
         if (self.internal_nodes.len() as u64) < num_nodes {
             return Err(SelfCheckError::MissingNode(self.internal_nodes.len() as u64));
@@ -145,6 +150,7 @@ where
 
         // Start on level 0. We check the leaf hashes
         for (leaf_idx, leaf) in self.leaves.iter().enumerate() {
+            // This cannot panic because we checked that num_leaves isn't too big above
             let leaf_hash_idx: InternalIdx = LeafIdx::new(leaf_idx as u64).into();
 
             // Compute the leaf hash and retrieve the stored leaf hash
@@ -171,7 +177,9 @@ where
             let step_size = 2usize.pow(level + 1);
             for parent_idx in (start_idx..num_nodes).step_by(step_size) {
                 // Get the left and right children, erroring if they don't exist
+                // new() doesn't panic because parent_idx is a valid node in num_leaves
                 let parent_idx = InternalIdx::new(parent_idx);
+                // *_child() don't panic because parent is a parent node, since level >= 1
                 let left_child_idx = parent_idx.left_child();
                 let right_child_idx = parent_idx.right_child(num_leaves);
 
@@ -252,6 +260,10 @@ where
     }
 
     /// Returns the root hash of this tree. The value and type uniquely describe this tree.
+    ///
+    /// # Panics
+    /// Panics if this tree is malformed, e.g., deserialized from disk without passing a
+    /// [`MemoryBackedTree::self_check`].
     pub fn root(&self) -> RootHash<H> {
         let num_leaves = self.len();
 
@@ -260,6 +272,8 @@ where
             H::digest(b"")
         } else {
             //  Otherwise it's the internal node at the root index
+            // This cannot panic. In a valid tree, self.internal_nodes fits in memory, meaning that
+            // num_leaves is within range.
             let root_idx = root_idx(num_leaves);
             // We can unwrap() because we assume we're not missing any internal nodes. That is,
             // self.internal_nodes.len() <= usize::MAX, which implies that root_idx <= usize::MAX
