@@ -142,7 +142,8 @@ fn consistency_kat() {
     {
         // Construct a consistency proof between the smaller and larger tree
         let t = tree_with_size(*num_leaves2);
-        let proof = t.prove_consistency(*num_leaves1);
+        let num_additions = num_leaves2 - num_leaves1;
+        let proof = t.prove_consistency(num_additions);
 
         // Check that the proof is what we expected
         assert_eq!(proof.as_bytes(), hex::decode(expected_proof).unwrap());

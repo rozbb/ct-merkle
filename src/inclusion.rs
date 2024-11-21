@@ -105,13 +105,16 @@ where
 /// order in [`InclusionProof::from_digests`].
 ///
 /// # Panics
-/// Panics if `num_leaves == 0` or if `idx >= num_leaves`.
+/// Panics if `num_leaves == 0`, if `idx >= num_leaves`, or if `idx > ⌊u64::MAX / 2⌋`.
 pub fn indices_for_inclusion_proof(num_leaves: u64, idx: u64) -> Vec<u64> {
     if num_leaves == 0 {
         panic!("cannot create an inclusion proof for an empty tree")
     }
     if idx >= num_leaves {
         panic!("cannot create an inclusion proof for an index that's not in the tree")
+    }
+    if idx > u64::MAX / 2 {
+        panic!("leaf index is too high")
     }
 
     let mut out = Vec::new();
@@ -148,15 +151,22 @@ impl<H: Digest> RootHash<H> {
         idx: u64,
         proof: &InclusionProof<H>,
     ) -> Result<(), InclusionVerifError> {
-        // Check that the proof isn't too big, and is made up of a sequence of hash digests
+        if idx >= self.num_leaves {
+            return Err(InclusionVerifError::IndexOutOfRange);
+        }
+        if self.num_leaves == 0 {
+            return Err(InclusionVerifError::TreeEmpty);
+        }
+
+        // Check that the proof is the right size. If not, return an error
         let InclusionProof { proof, .. } = proof;
-        let max_proof_size = {
-            let tree_height = root_idx(self.num_leaves).level();
-            (tree_height * H::OutputSize::U32) as usize
+        // We can call indices_for_inclusion_proof without panicking because we checked that
+        // idx < self.num_leaves and self.num_leaves != 0 above
+        let expected_proof_size = {
+            let num_hashes = indices_for_inclusion_proof(self.num_leaves, idx).len();
+            H::OutputSize::USIZE * num_hashes
         };
-        // If the proof is too big or the proof length isn't a multiple of the digest size, that's
-        // an error
-        if proof.len() > max_proof_size || proof.len() % H::OutputSize::USIZE != 0 {
+        if proof.len() != expected_proof_size {
             return Err(InclusionVerifError::MalformedProof);
         }
 
@@ -169,6 +179,8 @@ impl<H: Digest> RootHash<H> {
         // Otherwise, start hashing up the tree
         let mut cur_idx: InternalIdx = LeafIdx::new(idx).into();
         let mut cur_hash = leaf_hash;
+        // Invariant: hash_slice is always H::OutputSize::USIZE because we checked above that
+        // proof.len() is the correct length, which calculated as a multiple of the digest len
         for hash_slice in proof.chunks(H::OutputSize::USIZE) {
             // Hash the current node with its provided sibling
             let sibling_hash = digest::Output::<H>::from_slice(hash_slice);
@@ -179,6 +191,9 @@ impl<H: Digest> RootHash<H> {
             }
 
             // Step up the tree
+            // This panics if `cur_idx` is the root index. This cannot happen because have checked
+            // that `idx < self.num_leaves`, and the proof is the correct length, i.e., precisely
+            // long enough for the *final* value of `cur_idx` to be the root index.
             cur_idx = cur_idx.parent(self.num_leaves);
         }
 
@@ -186,14 +201,14 @@ impl<H: Digest> RootHash<H> {
         if cur_hash.ct_eq(&self.root_hash).into() {
             Ok(())
         } else {
-            Err(InclusionVerifError::VerificationFailure)
+            Err(InclusionVerifError::IncorrectHash)
         }
     }
 }
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::mem_backed_tree::test::rand_tree;
+    use crate::{mem_backed_tree::test::rand_tree, RootHash};
 
     // Tests that an honestly generated inclusion proof verifies
     #[test]
@@ -210,6 +225,17 @@ pub(crate) mod test {
             // Now check the proof
             let root = t.root();
             root.verify_inclusion(&elem, idx as u64, &proof).unwrap();
+
+            // Make two roots whose tree heights are different from the original. This should
+            // trigger a "proof isn't the correct length" error.
+            let modified_root = RootHash::new(*root.as_bytes(), 2 * root.num_leaves());
+            assert!(modified_root
+                .verify_inclusion(&elem, idx as u64, &proof)
+                .is_err());
+            let modified_root = RootHash::new(*root.as_bytes(), root.num_leaves() / 2);
+            assert!(modified_root
+                .verify_inclusion(&elem, idx as u64, &proof)
+                .is_err());
         }
     }
 }

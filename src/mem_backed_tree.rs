@@ -266,10 +266,7 @@ where
             self.internal_nodes[root_idx.as_usize().unwrap()].clone()
         };
 
-        RootHash {
-            root_hash,
-            num_leaves,
-        }
+        RootHash::new(root_hash, num_leaves)
     }
 
     /// Tries to get the item at the given index

@@ -1,7 +1,6 @@
 // The doc_cfg feature is only available in nightly. It lets us mark items in documentation as
 // dependent on specific features.
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![no_std]
 #![doc = include_str!("../README.md")]
 extern crate alloc;
 
@@ -33,8 +32,7 @@ pub struct RootHash<H: Digest> {
     /// The root hash of the Merkle tree that this root represents
     root_hash: digest::Output<H>,
 
-    /// The number of leaves in the Merkle tree that this root represents. That is, the number of
-    /// items inserted into the [`CtMerkleTree`] that created with `RootHash`.
+    /// The number of leaves in the Merkle tree that this root represents.
     num_leaves: u64,
 }
 
