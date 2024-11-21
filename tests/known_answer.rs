@@ -1,7 +1,7 @@
 //! This file copies the known-answer tests from the transparency-dev/merkle project. Vectors from
 //! https://github.com/transparency-dev/merkle/blob/e739733c8ca2b89cfc49f35b161e81e16b5957d7/testonly/reference_test.go
 
-use ct_merkle::CtMerkleTree;
+use ct_merkle::mem_backed_tree::MemoryBackedTree;
 use sha2::Sha256;
 
 /// An inclusion test vector specifies the size of the tree, the index whose inclusion is being
@@ -104,8 +104,8 @@ const CONSISTENCY_VECS: &[ConsistencyTestVector] = &[
 ];
 
 /// Appends the first num_leaves items from LEAVES to an empty tree
-fn tree_with_size(num_leaves: usize) -> CtMerkleTree<Sha256, Vec<u8>> {
-    let mut t = CtMerkleTree::<Sha256, Vec<u8>>::new();
+fn tree_with_size(num_leaves: usize) -> MemoryBackedTree<Sha256, Vec<u8>> {
+    let mut t = MemoryBackedTree::<Sha256, Vec<u8>>::new();
     LEAVES
         .iter()
         .take(num_leaves)
@@ -142,7 +142,8 @@ fn consistency_kat() {
     {
         // Construct a consistency proof between the smaller and larger tree
         let t = tree_with_size(*num_leaves2);
-        let proof = t.prove_consistency(*num_leaves1);
+        let num_additions = num_leaves2 - num_leaves1;
+        let proof = t.prove_consistency(num_additions);
 
         // Check that the proof is what we expected
         assert_eq!(proof.as_bytes(), hex::decode(expected_proof).unwrap());

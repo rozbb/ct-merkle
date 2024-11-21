@@ -13,9 +13,3 @@ pub(crate) fn serde_roundtrip<T: SerdeSerialize + for<'a> SerdeDeserialize<'a>>(
     let s = serde_json::to_string(&val).unwrap();
     serde_json::from_str(&s).unwrap()
 }
-
-// If we don't have serde, just return the input
-#[cfg(not(feature = "serde"))]
-pub(crate) fn serde_roundtrip<T>(val: T) -> T {
-    val
-}
