@@ -33,7 +33,7 @@ impl<H: Digest> InclusionProof<H> {
     /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is
     /// not a concatenated sequence of hash digests.
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
-        if bytes.len() % H::OutputSize::USIZE != 0 {
+        if !bytes.len().is_multiple_of(H::OutputSize::USIZE) {
             panic!("malformed inclusion proof");
         } else {
             InclusionProof {
@@ -61,7 +61,7 @@ impl<H: Digest> InclusionProof<H> {
     /// If when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
     /// is not a concatenated sequence of hash digests.
     pub fn try_from_bytes(bytes: Vec<u8>) -> Result<Self, InclusionVerifError> {
-        if bytes.len() % H::OutputSize::USIZE != 0 {
+        if !bytes.len().is_multiple_of(H::OutputSize::USIZE) {
             return Err(InclusionVerifError::MalformedProof);
         }
 
