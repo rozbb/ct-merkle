@@ -189,7 +189,7 @@ impl<H: Digest> RootHash<H> {
         // proof.len() is the correct length, which calculated as a multiple of the digest len
         for hash_slice in proof.chunks(H::OutputSize::USIZE) {
             // Hash the current node with its provided sibling
-            let sibling_hash = digest::Output::<H>::from_slice(hash_slice);
+            let sibling_hash = <&digest::Output<H>>::try_from(hash_slice).unwrap();
             if cur_idx.is_left(self.num_leaves) {
                 cur_hash = parent_hash::<H>(&cur_hash, sibling_hash);
             } else {

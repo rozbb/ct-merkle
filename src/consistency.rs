@@ -211,7 +211,7 @@ impl<H: Digest> RootHash<H> {
         let mut digests = proof
             .proof
             .chunks(H::OutputSize::USIZE)
-            .map(digest::Output::<H>::from_slice);
+            .map(|s| <&digest::Output<H>>::try_from(s).unwrap());
 
         // We compute both old and new tree hashes. This procedure will succeed iff the oldtree
         // hash matches old_root and the tree hash matches self
