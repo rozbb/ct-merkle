@@ -5,10 +5,11 @@ documentation = "https://docs.rs/ct-merkle"
 description = "An implementation of the append-only log described in the Certificate Transparency specification (RFC 6962)"
 readme = "README.md"
 version = "0.3.0"
-edition = "2021"
+edition = "2024"
 license = "MIT/Apache-2.0"
 keywords = ["crypto", "tls", "pki", "ct", "hash"]
 categories = ["no-std", "cryptography", "network-programming", "compression"]
+rust-version = "1.85"
 
 [dependencies]
 digest = "0.11"
@@ -18,11 +19,10 @@ subtle = { version = "2", default-features = false }
 
 [features]
 default = []
-std = []
 serde = [ "dep:serde", "dep:hybrid-array", "hybrid-array/serde" ]
 
 [dev-dependencies]
 hex = "0.4"
-rand = { version = "0.9", features = [ "std_rng" ] }
+rand = { version = "0.10", features = [ "std_rng" ] }
 serde_json = "1"
 sha2 = "0.11"

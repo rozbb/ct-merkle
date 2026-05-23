@@ -87,8 +87,6 @@ impl fmt::Display for ConsistencyVerifError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for InclusionVerifError {}
+impl core::error::Error for InclusionVerifError {}
 
-#[cfg(feature = "std")]
-impl std::error::Error for ConsistencyVerifError {}
+impl core::error::Error for ConsistencyVerifError {}

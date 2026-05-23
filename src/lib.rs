@@ -5,10 +5,8 @@
 #![doc = include_str!("../README.md")]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate std;
-
 pub use digest;
+pub use digest::array;
 
 mod consistency;
 mod error;

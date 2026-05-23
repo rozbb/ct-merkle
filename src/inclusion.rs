@@ -1,13 +1,13 @@
 //! Types and traits for inclusion proofs, a.k.a., Merkle Audit Paths
 
 use crate::{
-    error::InclusionVerifError, mem_backed_tree::MemoryBackedTree, tree_util::*, RootHash,
+    RootHash, error::InclusionVerifError, mem_backed_tree::MemoryBackedTree, tree_util::*,
 };
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use digest::{typenum::Unsigned, Digest};
+use digest::{Digest, typenum::Unsigned};
 use subtle::ConstantTimeEq;
 
 /// A proof that a value appears in a Merkle tree
@@ -33,7 +33,7 @@ impl<H: Digest> InclusionProof<H> {
     /// Panics when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is
     /// not a concatenated sequence of hash digests.
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
-        if !bytes.len().is_multiple_of(H::OutputSize::USIZE) {
+        if bytes.len() % H::OutputSize::USIZE != 0 {
             panic!("malformed inclusion proof");
         } else {
             InclusionProof {
@@ -61,7 +61,7 @@ impl<H: Digest> InclusionProof<H> {
     /// If when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes`
     /// is not a concatenated sequence of hash digests.
     pub fn try_from_bytes(bytes: Vec<u8>) -> Result<Self, InclusionVerifError> {
-        if !bytes.len().is_multiple_of(H::OutputSize::USIZE) {
+        if bytes.len() % H::OutputSize::USIZE != 0 {
             return Err(InclusionVerifError::MalformedProof);
         }
 
@@ -214,7 +214,7 @@ impl<H: Digest> RootHash<H> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::{mem_backed_tree::test::rand_tree, RootHash};
+    use crate::{RootHash, mem_backed_tree::test::rand_tree};
 
     // Tests that an honestly generated inclusion proof verifies
     #[test]
@@ -235,13 +235,17 @@ pub(crate) mod test {
             // Make two roots whose tree heights are different from the original. This should
             // trigger a "proof isn't the correct length" error.
             let modified_root = RootHash::new(*root.as_bytes(), 2 * root.num_leaves());
-            assert!(modified_root
-                .verify_inclusion(&elem, idx as u64, &proof)
-                .is_err());
+            assert!(
+                modified_root
+                    .verify_inclusion(&elem, idx as u64, &proof)
+                    .is_err()
+            );
             let modified_root = RootHash::new(*root.as_bytes(), root.num_leaves() / 2);
-            assert!(modified_root
-                .verify_inclusion(&elem, idx as u64, &proof)
-                .is_err());
+            assert!(
+                modified_root
+                    .verify_inclusion(&elem, idx as u64, &proof)
+                    .is_err()
+            );
         }
     }
 }

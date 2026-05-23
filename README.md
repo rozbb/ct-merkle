@@ -20,7 +20,6 @@ Default feature flags: none
 
 Feature flag list:
 
-* `std` - Implements `std::error::Error` for all error types
 * `serde` - Implements `serde::Serialize` and `serde::Deserialize` for `MemoryBackedTree`
 
 License
