@@ -308,10 +308,10 @@ pub(crate) mod test {
     use super::*;
     use crate::test_util::{Hash, Leaf};
 
-    use rand::{Rng, RngCore};
+    use rand::{Rng, RngExt};
 
     // Creates a random T
-    pub(crate) fn rand_val<R: RngCore>(mut rng: R) -> Leaf {
+    pub(crate) fn rand_val(rng: &mut impl Rng) -> Leaf {
         let mut val = Leaf::default();
         rng.fill_bytes(&mut val);
 
@@ -319,11 +319,11 @@ pub(crate) mod test {
     }
 
     // Creates a random CtMerkleTree with `size` items
-    pub(crate) fn rand_tree<R: RngCore>(mut rng: R, size: usize) -> MemoryBackedTree<Hash, Leaf> {
+    pub(crate) fn rand_tree(rng: &mut impl Rng, size: usize) -> MemoryBackedTree<Hash, Leaf> {
         let mut t = MemoryBackedTree::<Hash, Leaf>::default();
 
         for _ in 0..size {
-            let val = rand_val(&mut rng);
+            let val = rand_val(rng);
             t.push(val);
         }
 
