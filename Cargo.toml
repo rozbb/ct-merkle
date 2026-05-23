@@ -9,6 +9,7 @@ edition = "2021"
 license = "MIT/Apache-2.0"
 keywords = ["crypto", "tls", "pki", "ct", "hash"]
 categories = ["no-std", "cryptography", "network-programming", "compression"]
+rust-version = "1.85"
 
 [dependencies]
 digest = "0.11"

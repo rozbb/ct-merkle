@@ -42,6 +42,7 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: -D warnings
         run: cargo test --all-features
+
   rustfmt:
     runs-on: ubuntu-latest
     steps:
@@ -60,6 +61,7 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
   clippy:
     runs-on: ubuntu-latest
     steps:
@@ -70,3 +72,14 @@ jobs:
           toolchain: stable
           components: clippy
       - run: cargo clippy --all-features -- -D warnings
+
+  msrv:
+    name: rust-version is MSRV
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo +nightly install cargo-msrv --no-default-features
+      - run: cargo +nightly msrv --version
+      - run: cargo +nightly msrv verify --all-features
