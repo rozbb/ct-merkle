@@ -6,6 +6,7 @@
 extern crate alloc;
 
 pub use digest;
+pub use digest::array;
 
 mod consistency;
 mod error;
