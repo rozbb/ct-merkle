@@ -18,7 +18,6 @@ subtle = { version = "2", default-features = false }
 
 [features]
 default = []
-std = []
 serde = [ "dep:serde", "dep:hybrid-array", "hybrid-array/serde" ]
 
 [dev-dependencies]
