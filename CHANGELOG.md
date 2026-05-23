@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changes
+
+* Bumped `digest` to v0.11, which replaces `generic-array` with `hybrid-array`. `digest::Output<H>` is now a `hybrid_array::Array` rather than a `GenericArray`.
+* Bumped `sha2` dev-dependency to v0.11
+* MSRV is now 1.85 (inherited from `digest` v0.11)
+* The `serde` feature now forwards to `hybrid-array/serde` instead of `generic-array/serde`
+* The `std` feature no longer forwards to `digest/std` (removed upstream in `digest` v0.11)
+
 ## v0.2
 
 ### Additions

@@ -35,7 +35,7 @@ impl<H: Digest> ConsistencyProof<H> {
     /// If when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is not
     /// a concatenated sequence of hash digests.
     pub fn try_from_bytes(bytes: Vec<u8>) -> Result<Self, ConsistencyVerifError> {
-        if bytes.len() % H::OutputSize::USIZE != 0 {
+        if !bytes.len().is_multiple_of(H::OutputSize::USIZE) {
             Err(ConsistencyVerifError::MalformedProof)
         } else {
             Ok(ConsistencyProof {
@@ -211,7 +211,7 @@ impl<H: Digest> RootHash<H> {
         let mut digests = proof
             .proof
             .chunks(H::OutputSize::USIZE)
-            .map(digest::Output::<H>::from_slice);
+            .map(|s| <&digest::Output<H>>::try_from(s).unwrap());
 
         // We compute both old and new tree hashes. This procedure will succeed iff the oldtree
         // hash matches old_root and the tree hash matches self
