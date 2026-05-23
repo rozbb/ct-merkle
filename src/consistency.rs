@@ -35,7 +35,7 @@ impl<H: Digest> ConsistencyProof<H> {
     /// If when `bytes.len()` is not a multiple of `H::OutputSize::USIZE`, i.e., when `bytes` is not
     /// a concatenated sequence of hash digests.
     pub fn try_from_bytes(bytes: Vec<u8>) -> Result<Self, ConsistencyVerifError> {
-        if !bytes.len().is_multiple_of(H::OutputSize::USIZE) {
+        if bytes.len() % H::OutputSize::USIZE != 0 {
             Err(ConsistencyVerifError::MalformedProof)
         } else {
             Ok(ConsistencyProof {
