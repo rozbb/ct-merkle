@@ -1,4 +1,4 @@
-use crate::{tree_util::*, RootHash};
+use crate::{RootHash, tree_util::*};
 
 use alloc::vec::Vec;
 use core::fmt;

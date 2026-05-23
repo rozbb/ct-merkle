@@ -1,13 +1,13 @@
 //! Types and traits for Merkle consistency proofs
 
 use crate::{
-    error::ConsistencyVerifError, mem_backed_tree::MemoryBackedTree, tree_util::*, RootHash,
+    RootHash, error::ConsistencyVerifError, mem_backed_tree::MemoryBackedTree, tree_util::*,
 };
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use digest::{typenum::Unsigned, Digest};
+use digest::{Digest, typenum::Unsigned};
 use subtle::ConstantTimeEq;
 
 /// A proof that one Merkle tree is a prefix of another. In other words, tree #2 is the result of
@@ -304,8 +304,8 @@ fn first_node_with_diverging_parents(num_leaves1: u64, num_leaves2: u64) -> Inte
 #[cfg(test)]
 pub(crate) mod test {
     use crate::{
-        mem_backed_tree::test::{rand_tree, rand_val},
         RootHash,
+        mem_backed_tree::test::{rand_tree, rand_val},
     };
     use sha2::Sha256;
 
